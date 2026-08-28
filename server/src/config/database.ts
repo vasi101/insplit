@@ -1,22 +1,18 @@
-import dns from 'dns';
 import mongoose from 'mongoose';
 import { env } from './env';
 
-// Use public DNS fallback (Google / Cloudflare) to ensure Atlas SRV lookups succeed on Windows / restrictive ISPs
-try {
-  dns.setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4']);
-} catch {
-  // ignore if unsupported
-}
-
 export async function connectDatabase(): Promise<void> {
   try {
-    await mongoose.connect(env.mongodbUri);
+    await mongoose.connect(env.mongodbUri, { serverSelectionTimeoutMS: 10_000 });
     console.log('✅ MongoDB connected successfully');
   } catch (error) {
     console.error('❌ MongoDB connection error:', error);
     process.exit(1);
   }
+}
+
+export async function disconnectDatabase(): Promise<void> {
+  await mongoose.disconnect();
 }
 
 mongoose.connection.on('disconnected', () => {

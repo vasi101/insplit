@@ -1,6 +1,7 @@
 {
   "expo": {
     "name": "Insplit",
+    "icon": "./assets/icon.png",
     "slug": "insplit",
     "version": "1.0.0",
     "orientation": "portrait",

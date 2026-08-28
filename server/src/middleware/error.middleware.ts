@@ -14,7 +14,9 @@ export function errorMiddleware(
   _next: NextFunction
 ): void {
   const statusCode = err.statusCode ?? 500;
-  const message = err.message ?? 'Internal server error';
+  const message = statusCode >= 500 && env.nodeEnv === 'production'
+    ? 'Internal server error'
+    : (err.message ?? 'Internal server error');
   const code = err.code ?? 'INTERNAL_ERROR';
 
   if (env.nodeEnv === 'development') {

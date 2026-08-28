@@ -12,12 +12,27 @@ import { errorMiddleware, notFoundMiddleware } from './middleware/error.middlewa
 
 const app = express();
 
+// Required for correct client IPs and rate limiting behind Render/Railway/etc.
+app.set('trust proxy', 1);
+app.disable('x-powered-by');
+
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  next();
+});
+
 // ─── Request Logging ─────────────────────────────────────────────────────────
 app.use(morgan(env.nodeEnv === 'production' ? 'combined' : 'dev'));
 
 // ─── Global Middleware ──────────────────────────────────────────────────────
 app.use(cors({
-  origin: env.nodeEnv === 'production' ? env.corsOrigins : true,
+  // Native clients generally omit Origin; browsers must match the allowlist.
+  origin: env.nodeEnv === 'production'
+    ? (origin, callback) => callback(null, !origin || env.corsOrigins.includes(origin))
+    : true,
   credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
@@ -34,7 +49,7 @@ const authLimiter = rateLimit({
 
 // ─── Health Check ────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => {
-  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.status(200).json({ status: 'ok' });
 });
 
 // ─── API Routes ───────────────────────────────────────────────────────────────
@@ -49,4 +64,3 @@ app.use(notFoundMiddleware);
 app.use(errorMiddleware);
 
 export default app;
-

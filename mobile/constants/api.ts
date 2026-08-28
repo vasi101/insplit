@@ -1,23 +1,26 @@
-import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
-// Auto-detect the computer's Wi-Fi IP from Expo when running on a physical phone
-function getDevServerIp(): string {
-  // hostUri looks like "192.168.18.21:8081"
+const PRODUCTION_API_URL = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, '')
+  || 'https://insplit-wine.vercel.app';
+
+function getDevApiUrl(): string {
+  // Expo hostUri example: "192.168.18.21:8081"
   const hostUri = Constants.expoConfig?.hostUri;
+
   if (hostUri) {
-    const ip = hostUri.split(':')[0];
-    if (ip) return `http://${ip}:5000`;
+    const host = hostUri.split(':')[0];
+
+    if (host) {
+      return `http://${host}:5000`;
+    }
   }
-  
-  return Platform.select({
-    android: 'http://192.168.18.21:5000',
-    ios: 'http://192.168.18.21:5000',
-    default: 'http://localhost:5000',
-  }) as string;
+
+  return 'http://localhost:5000';
 }
 
-export const DEFAULT_BASE_URL = getDevServerIp();
+export const DEFAULT_BASE_URL = __DEV__
+  ? getDevApiUrl()
+  : PRODUCTION_API_URL;
 
 export const API_CONFIG = {
   BASE_URL: DEFAULT_BASE_URL,
