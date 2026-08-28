@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "Insplit",
+    "slug": "insplit",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.insplit.app"
+    },
+    "android": {
+      "package": "com.insplit.app",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Insplit needs access to your photos to attach receipts to expenses."
+        }
+      ],
+      "expo-status-bar"
+    ],
+    "scheme": "insplit",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "ef483eff-d7bd-4db8-8c63-931372a50f3c"
+      }
+    }
+  }
+}
