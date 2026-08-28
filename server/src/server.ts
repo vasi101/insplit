@@ -1,7 +1,7 @@
 import http from 'http';
 import app from './app';
 import { env } from './config/env';
-import { connectDatabase } from './config/database';
+import { connectDatabase, disconnectDatabase } from './config/database';
 import { initSocketServer } from './sockets/socket.server';
 
 async function bootstrap() {
@@ -21,11 +21,22 @@ async function bootstrap() {
     console.log(`🌐 API: http://localhost:${env.port}/api`);
   });
 
-  // Graceful shutdown
-  process.on('SIGTERM', () => {
-    console.log('SIGTERM received. Shutting down gracefully...');
-    httpServer.close(() => process.exit(0));
-  });
+  let shuttingDown = false;
+  const shutdown = (signal: string) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`${signal} received. Shutting down gracefully...`);
+
+    httpServer.close(async () => {
+      await disconnectDatabase();
+      process.exit(0);
+    });
+
+    setTimeout(() => process.exit(1), 10_000).unref();
+  };
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 }
 
 bootstrap().catch((error) => {
