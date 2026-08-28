@@ -9,6 +9,7 @@ import transactionRoutes from './modules/transactions/transaction.routes';
 import settlementRoutes from './modules/settlements/settlement.routes';
 import uploadRoutes from './modules/uploads/upload.routes';
 import { errorMiddleware, notFoundMiddleware } from './middleware/error.middleware';
+import { connectDatabase } from './config/database';
 
 const app = express();
 
@@ -48,11 +49,24 @@ const authLimiter = rateLimit({
 });
 
 // ─── Health Check ────────────────────────────────────────────────────────────
-app.get('/health', (_req, res) => {
-  res.status(200).json({ status: 'ok' });
+app.get('/health', async (_req, res, next) => {
+  try {
+    await connectDatabase();
+    res.status(200).json({ status: 'ok' });
+  } catch (error) {
+    next(error);
+  }
 });
 
 // ─── API Routes ───────────────────────────────────────────────────────────────
+app.use('/api', async (_req, _res, next) => {
+  try {
+    await connectDatabase();
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/transactions', transactionRoutes);
