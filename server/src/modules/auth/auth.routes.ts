@@ -10,6 +10,8 @@ import {
   registerValidation,
   loginValidation,
   updateProfileValidation,
+  verifyPassword,
+  verifyPasswordValidation,
 } from './auth.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
 
@@ -22,6 +24,7 @@ router.post('/refresh', refresh);
 
 // Protected routes
 router.post('/logout', authMiddleware, logout);
+router.post('/verify-password', authMiddleware, verifyPasswordValidation, verifyPassword);
 router.get('/me', authMiddleware, getMe);
 router.patch('/me', authMiddleware, updateProfileValidation, updateProfile);
 router.patch('/push-token', authMiddleware, updatePushToken);

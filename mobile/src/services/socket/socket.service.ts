@@ -26,7 +26,9 @@ export async function connectSocket(): Promise<Socket | null> {
   if (socket?.connected) return socket;
 
   const customUrl = await getCustomBaseUrl();
-  const base = customUrl || API_CONFIG.BASE_URL;
+  const base = API_CONFIG.HAS_ENV_OVERRIDE
+    ? API_CONFIG.BASE_URL
+    : (customUrl?.trim().replace(/\/+$/, '') || API_CONFIG.BASE_URL);
 
   socket = io(base, {
     auth: { token },

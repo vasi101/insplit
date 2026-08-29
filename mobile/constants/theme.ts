@@ -33,6 +33,32 @@ export const Colors = {
   infoText: '#1E40AF',
 };
 
+export type ThemeColors = typeof Colors;
+
+export const DarkColors: ThemeColors = {
+  ...Colors,
+  primary: '#8EA2FF',
+  primaryDark: '#B7C2FF',
+  primaryLight: '#38BDF8',
+  background: '#0B1020',
+  surface: '#151C2F',
+  surfaceSubtle: '#202A40',
+  text: '#F8FAFC',
+  textSecondary: '#B6C0D1',
+  textMuted: '#7F8CA3',
+  textInverted: '#0B1020',
+  border: '#344057',
+  borderLight: '#263249',
+  successLight: '#123B31',
+  successText: '#6EE7B7',
+  warningLight: '#422F10',
+  warningText: '#FCD34D',
+  dangerLight: '#451E28',
+  dangerText: '#FDA4AF',
+  infoLight: '#172E55',
+  infoText: '#93C5FD',
+};
+
 export const Spacing = {
   xs: 4,
   sm: 8,

@@ -1,6 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
-export type PaymentMethod = 'CASH' | 'BANK_TRANSFER' | 'ESEWA' | 'KHALTI' | 'OTHER';
+export type PaymentMethod = 'CASH' | 'BANK_TRANSFER' | 'ESEWA' | 'KHALTI' | 'CARD' | 'OTHER';
+export type SettlementStatus = 'PENDING' | 'VERIFIED' | 'REJECTED';
 
 export interface ISettlement extends Document {
   _id: mongoose.Types.ObjectId;
@@ -12,6 +13,13 @@ export interface ISettlement extends Document {
   settlementDate: Date;
   method: PaymentMethod;
   note?: string;
+  proofImage?: string;
+  status: SettlementStatus;
+  verification?: {
+    verifiedBy?: mongoose.Types.ObjectId;
+    decision?: 'APPROVED' | 'REJECTED';
+    verifiedAt?: Date;
+  };
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
 }
@@ -26,10 +34,17 @@ const SettlementSchema = new Schema<ISettlement>(
     settlementDate: { type: Date, required: true },
     method: {
       type: String,
-      enum: ['CASH', 'BANK_TRANSFER', 'ESEWA', 'KHALTI', 'OTHER'],
+      enum: ['CASH', 'BANK_TRANSFER', 'ESEWA', 'KHALTI', 'CARD', 'OTHER'],
       default: 'CASH',
     },
     note: { type: String, trim: true, maxlength: 500 },
+    proofImage: { type: String, default: null },
+    status: { type: String, enum: ['PENDING', 'VERIFIED', 'REJECTED'], default: 'PENDING' },
+    verification: {
+      verifiedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+      decision: { type: String, enum: ['APPROVED', 'REJECTED'], default: null },
+      verifiedAt: { type: Date, default: null },
+    },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   },
   { timestamps: true }

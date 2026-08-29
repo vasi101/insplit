@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getBalances, recordSettlement, getSettlementHistory } from './settlement.controller';
+import { approveSettlement, getBalances, recordSettlement, getSettlementHistory, rejectSettlement } from './settlement.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
 
 const router = Router();
@@ -11,5 +11,7 @@ router.get('/:roomId/history', getSettlementHistory);
 
 // Record a new settlement payment
 router.post('/', recordSettlement);
+router.post('/:settlementId/approve', approveSettlement);
+router.post('/:settlementId/reject', rejectSettlement);
 
 export default router;

@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
-import { Colors, Spacing } from '../../../constants/theme';
+import { Spacing, ThemeColors } from '../../../constants/theme';
+import { useThemeColors } from '../../store/theme.store';
 import { Button } from './Button';
 
 export interface EmptyStateProps {
@@ -20,6 +21,8 @@ export function EmptyState({
   onAction,
   style,
 }: EmptyStateProps) {
+  const Colors = useThemeColors();
+  const styles = useMemo(() => createStyles(Colors), [Colors]);
   return (
     <View style={[styles.container, style]}>
       {icon && <View style={styles.iconContainer}>{icon}</View>}
@@ -36,7 +39,7 @@ export function EmptyState({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (Colors: ThemeColors) => StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',

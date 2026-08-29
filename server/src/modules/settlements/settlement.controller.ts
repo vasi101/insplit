@@ -37,3 +37,17 @@ export async function getSettlementHistory(req: Request, res: Response, next: Ne
     next(error);
   }
 }
+
+export async function approveSettlement(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const settlement = await settlementService.verifySettlement(req.params.settlementId, req.user!.userId, true);
+    res.status(200).json(successResponse({ settlement }, 'Settlement approved'));
+  } catch (error) { next(error); }
+}
+
+export async function rejectSettlement(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const settlement = await settlementService.verifySettlement(req.params.settlementId, req.user!.userId, false);
+    res.status(200).json(successResponse({ settlement }, 'Settlement rejected'));
+  } catch (error) { next(error); }
+}

@@ -3,6 +3,7 @@ export interface User {
   name: string;
   email: string;
   profileImage?: string;
+  phone?: string;
   pushToken?: string;
   createdAt: string;
   updatedAt: string;
@@ -99,7 +100,7 @@ export interface BalanceSummaryResponse {
   currency: string;
 }
 
-export type PaymentMethod = 'CASH' | 'BANK_TRANSFER' | 'ESEWA' | 'KHALTI' | 'OTHER';
+export type PaymentMethod = 'CASH' | 'BANK_TRANSFER' | 'ESEWA' | 'KHALTI' | 'CARD' | 'OTHER';
 
 export interface Settlement {
   _id: string;
@@ -111,6 +112,13 @@ export interface Settlement {
   settlementDate: string;
   method: PaymentMethod;
   note?: string;
+  proofImage?: string;
+  status?: 'PENDING' | 'VERIFIED' | 'REJECTED';
+  verification?: {
+    verifiedBy?: User | string;
+    decision?: 'APPROVED' | 'REJECTED';
+    verifiedAt?: string;
+  };
   createdBy: string;
   createdAt: string;
 }

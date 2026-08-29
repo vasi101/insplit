@@ -24,7 +24,7 @@ interface AuthState {
   login: (payload: authApi.LoginPayload) => Promise<void>;
   register: (payload: authApi.RegisterPayload) => Promise<void>;
   logout: () => Promise<void>;
-  updateProfile: (payload: { name?: string; profileImage?: string }) => Promise<void>;
+  updateProfile: (payload: { name?: string; profileImage?: string; phone?: string }) => Promise<void>;
   setCustomBaseUrl: (url: string) => Promise<void>;
   clearError: () => void;
 }

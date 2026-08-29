@@ -91,6 +91,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
       set({ rooms: [room, ...rooms], currentRoom: room, isLoading: false });
       await saveCurrentRoomId(room._id);
       joinSocketRoom(room._id);
+      void get().fetchMembers(room._id);
       return room;
     } catch (err) {
       const message = extractErrorMessage(err);
@@ -107,6 +108,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
       set({ rooms: [room, ...rooms], currentRoom: room, isLoading: false });
       await saveCurrentRoomId(room._id);
       joinSocketRoom(room._id);
+      void get().fetchMembers(room._id);
       return room;
     } catch (err) {
       const message = extractErrorMessage(err);

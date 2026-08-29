@@ -1,16 +1,22 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
-  Platform,
-  StatusBar,
   TouchableOpacity,
   Alert,
   Modal,
+  Switch,
+  ImageBackground,
+  ActivityIndicator,
+  Platform,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
+import * as ImagePicker from 'expo-image-picker';
+import * as LocalAuthentication from 'expo-local-authentication';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../../src/store/auth.store';
 import { useRoomStore } from '../../../src/store/room.store';
@@ -18,13 +24,23 @@ import { Avatar } from '../../../src/components/ui/Avatar';
 import { Badge } from '../../../src/components/ui/Badge';
 import { Button } from '../../../src/components/ui/Button';
 import { Input } from '../../../src/components/ui/Input';
-import { Colors, Spacing, BorderRadius, Shadows } from '../../../constants/theme';
-import { DEFAULT_BASE_URL } from '../../../constants/api';
+import { Spacing, BorderRadius, Shadows, ThemeColors } from '../../../constants/theme';
+import { useThemeColors, useThemeStore } from '../../../src/store/theme.store';
+import { API_CONFIG, DEFAULT_BASE_URL } from '../../../constants/api';
+import { uploadImages } from '../../../src/services/api/upload.api';
+import { clearBiometricCredentials, isBiometricLoginEnabled } from '../../../src/utils/storage';
+import { NoticeModal } from '../../../src/components/ui/NoticeModal';
+import * as authApi from '../../../src/services/api/auth.api';
 
 export default function ProfileScreen() {
+  const Colors = useThemeColors();
+  const styles = useMemo(() => createStyles(Colors), [Colors]);
+  const themeMode = useThemeStore((state) => state.mode);
+  const toggleTheme = useThemeStore((state) => state.toggle);
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
+  const updateProfile = useAuthStore((state) => state.updateProfile);
   const customBaseUrl = useAuthStore((state) => state.customBaseUrl);
   const setCustomBaseUrl = useAuthStore((state) => state.setCustomBaseUrl);
 
@@ -36,19 +52,125 @@ export default function ProfileScreen() {
   const [urlModalVisible, setUrlModalVisible] = useState(false);
   const [newUrl, setNewUrl] = useState(customBaseUrl || DEFAULT_BASE_URL || '');
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [name, setName] = useState(user?.name || '');
+  const [phone, setPhone] = useState(user?.phone || '');
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [signOutVisible, setSignOutVisible] = useState(false);
+  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
+  const [signOutPassword, setSignOutPassword] = useState('');
+  const [passwordError, setPasswordError] = useState<string | undefined>();
+  const [isVerifying, setIsVerifying] = useState(false);
+
+  useEffect(() => {
+    isBiometricLoginEnabled().then(setBiometricEnabled).catch(() => setBiometricEnabled(false));
+  }, []);
+
+  const chooseProfilePhoto = () => {
+    Alert.alert('Profile photo', 'Choose a source', [
+      { text: 'Camera', onPress: () => void pickProfilePhoto(true) },
+      { text: 'Photo library', onPress: () => void pickProfilePhoto(false) },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const pickProfilePhoto = async (useCamera: boolean) => {
+    const permission = useCamera
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permission needed', `Allow ${useCamera ? 'camera' : 'photo'} access to continue.`);
+      return;
+    }
+    const result = useCamera
+      ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.8 })
+      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.8 });
+    if (result.canceled) return;
+    setIsUploadingPhoto(true);
+    try {
+      const asset = result.assets[0];
+      const [url] = await uploadImages([{ uri: asset.uri, name: asset.fileName || 'profile.jpg', type: asset.mimeType || 'image/jpeg' }]);
+      await updateProfile({ profileImage: url });
+    } catch (err) {
+      Alert.alert('Upload failed', err instanceof Error ? err.message : 'Could not update your photo.');
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!name.trim()) return;
+    setIsSaving(true);
+    try {
+      await updateProfile({ name: name.trim(), phone: phone.trim() });
+      setEditModalVisible(false);
+    } catch (err) {
+      Alert.alert('Update failed', err instanceof Error ? err.message : 'Could not update your profile.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleBiometricToggle = async (enabled: boolean) => {
+    if (!enabled) {
+      await clearBiometricCredentials();
+      setBiometricEnabled(false);
+      return;
+    }
+    Alert.alert('Enable biometric login', 'Sign out, then select biometric login when you next sign in.');
+  };
 
   const handleLogout = () => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out of Insplit?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign Out',
-        style: 'destructive',
-        onPress: async () => {
-          await logout();
-          router.replace('/auth/login');
-        },
-      },
-    ]);
+    setSignOutVisible(true);
+  };
+
+  const confirmLogout = async () => {
+    setSignOutVisible(false);
+    await logout();
+    router.replace('/auth/login');
+  };
+
+  const authenticateLogout = async () => {
+    setSignOutVisible(false);
+    const canUseBiometric = Platform.OS !== 'web'
+      && await LocalAuthentication.hasHardwareAsync()
+      && await LocalAuthentication.isEnrolledAsync();
+    if (canUseBiometric) {
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'Confirm sign out',
+        cancelLabel: 'Cancel',
+        fallbackLabel: 'Use password',
+        disableDeviceFallback: true,
+      });
+      if (result.success) {
+        await confirmLogout();
+        return;
+      }
+    }
+    setSignOutPassword('');
+    setPasswordError(undefined);
+    setPasswordModalVisible(true);
+  };
+
+  const confirmPasswordLogout = async () => {
+    if (!signOutPassword) {
+      setPasswordError('Enter your password');
+      return;
+    }
+    setIsVerifying(true);
+    setPasswordError(undefined);
+    try {
+      await authApi.verifyPassword(signOutPassword);
+      setPasswordModalVisible(false);
+      setSignOutPassword('');
+      await confirmLogout();
+    } catch {
+      setPasswordError('Incorrect password');
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   const handleRegenerateInvite = async () => {
@@ -99,13 +221,24 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
         {/* User Card */}
-        <View style={styles.userCard}>
-          <Avatar uri={user?.profileImage} name={user?.name} size={64} />
+        <ImageBackground source={user?.profileImage ? { uri: user.profileImage } : undefined} style={styles.userCard} imageStyle={styles.userCardImage}>
+          {user?.profileImage ? <BlurView intensity={72} tint={themeMode === 'dark' ? 'dark' : 'light'} style={StyleSheet.absoluteFill} /> : null}
+          <View style={styles.glassTint} />
+          <TouchableOpacity style={styles.avatarButton} onPress={chooseProfilePhoto} disabled={isUploadingPhoto}>
+            <Avatar uri={user?.profileImage} name={user?.name} size={76} style={styles.profileAvatar} />
+            <View style={styles.cameraBadge}>
+              {isUploadingPhoto ? <ActivityIndicator size="small" color="#FFF" /> : <Ionicons name="camera" size={15} color="#FFF" />}
+            </View>
+          </TouchableOpacity>
           <View style={styles.userMeta}>
             <Text style={styles.userName}>{user?.name}</Text>
             <Text style={styles.userEmail}>{user?.email}</Text>
+            {user?.phone ? <Text style={styles.userPhone}>{user.phone}</Text> : null}
           </View>
-        </View>
+          <TouchableOpacity style={styles.editButton} onPress={() => { setName(user?.name || ''); setPhone(user?.phone || ''); setEditModalVisible(true); }}>
+            <Ionicons name="pencil" size={17} color={Colors.text} />
+          </TouchableOpacity>
+        </ImageBackground>
 
         {/* Current Room Section */}
         {currentRoom ? (
@@ -178,20 +311,41 @@ export default function ProfileScreen() {
 
         {/* Server & Connection Settings */}
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Network & Server Config</Text>
+          <Text style={styles.sectionTitle}>Settings</Text>
           <View style={styles.settingRow}>
-            <View style={{ flex: 1, marginRight: Spacing.sm }}>
-              <Text style={styles.settingLabel}>Backend API URL</Text>
+            <View style={styles.settingIcon}><Ionicons name="moon" size={18} color={Colors.primary} /></View>
+            <View style={styles.settingCopy}>
+              <Text style={styles.settingLabel}>Dark theme</Text>
+            </View>
+            <Switch
+              value={themeMode === 'dark'}
+              onValueChange={() => void toggleTheme()}
+              trackColor={{ false: Colors.border, true: Colors.primary }}
+              thumbColor={Colors.surface}
+            />
+          </View>
+          <View style={styles.settingDivider} />
+          <View style={styles.settingRow}>
+            <View style={styles.settingIcon}><Ionicons name="finger-print" size={20} color={Colors.primary} /></View>
+            <View style={styles.settingCopy}><Text style={styles.settingLabel}>Biometric login</Text></View>
+            <Switch value={biometricEnabled} onValueChange={(value) => void handleBiometricToggle(value)} trackColor={{ false: Colors.border, true: Colors.primary }} thumbColor={Colors.surface} />
+          </View>
+        </View>
+
+        {/* Server & Connection Settings */}
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Connection</Text>
+          <View style={styles.settingRow}>
+            <View style={styles.settingIcon}><Ionicons name="server-outline" size={18} color={Colors.primary} /></View>
+            <View style={styles.settingCopy}>
+              <Text style={styles.settingLabel}>
+                {API_CONFIG.ENVIRONMENT === 'development' ? 'Local development API' : 'Production API'}
+              </Text>
               <Text style={styles.settingValue} numberOfLines={1}>
-                {customBaseUrl || DEFAULT_BASE_URL}
+                {DEFAULT_BASE_URL}
               </Text>
             </View>
-            <Button
-              title="Change"
-              size="sm"
-              variant="secondary"
-              onPress={() => setUrlModalVisible(true)}
-            />
+            <Text style={styles.environmentBadge}>{API_CONFIG.ENVIRONMENT}</Text>
           </View>
         </View>
 
@@ -204,6 +358,52 @@ export default function ProfileScreen() {
           style={styles.logoutBtn}
           textStyle={{ color: Colors.danger }}
         />
+
+        <NoticeModal
+          visible={signOutVisible}
+          title="Sign out?"
+          message="You can sign back in at any time."
+          kind="warning"
+          confirmLabel="Sign out"
+          cancelLabel="Stay"
+          onConfirm={() => void authenticateLogout()}
+          onCancel={() => setSignOutVisible(false)}
+        />
+
+        <Modal visible={passwordModalVisible} transparent animationType="fade" onRequestClose={() => setPasswordModalVisible(false)}>
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalContent}>
+              <View style={styles.passwordIcon}><Ionicons name="lock-closed" size={24} color={Colors.primary} /></View>
+              <Text style={styles.passwordTitle}>Confirm it’s you</Text>
+              <Text style={styles.passwordSubtitle}>Enter your password to sign out.</Text>
+              <Input
+                label="Password"
+                value={signOutPassword}
+                onChangeText={(value) => { setSignOutPassword(value); setPasswordError(undefined); }}
+                secureTextEntry
+                error={passwordError}
+              />
+              <View style={styles.modalActions}>
+                <Button title="Cancel" variant="ghost" onPress={() => setPasswordModalVisible(false)} style={styles.passwordAction} />
+                <Button title="Sign out" variant="danger" loading={isVerifying} onPress={confirmPasswordLogout} style={styles.passwordAction} />
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        <Modal visible={editModalVisible} transparent animationType="fade" onRequestClose={() => setEditModalVisible(false)}>
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Edit profile</Text>
+                <TouchableOpacity onPress={() => setEditModalVisible(false)}><Ionicons name="close" size={24} color={Colors.text} /></TouchableOpacity>
+              </View>
+              <Input label="Name" value={name} onChangeText={setName} />
+              <Input label="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+              <Button title="Save" onPress={handleSaveProfile} loading={isSaving} />
+            </View>
+          </View>
+        </Modal>
 
         {/* Edit Server URL Modal */}
         <Modal
@@ -242,11 +442,10 @@ export default function ProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (Colors: ThemeColors) => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: Colors.background,
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   container: {
     flex: 1,
@@ -258,15 +457,23 @@ const styles = StyleSheet.create({
   userCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.primaryLight,
     borderRadius: BorderRadius.lg,
     padding: Spacing.base,
     marginBottom: Spacing.md,
+    overflow: 'hidden',
+    minHeight: 116,
     ...Shadows.card,
   },
+  userCardImage: { borderRadius: BorderRadius.lg },
+  glassTint: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: Colors.surface, opacity: 0.46 },
+  avatarButton: { position: 'relative', zIndex: 1 },
+  profileAvatar: { borderWidth: 3, borderColor: 'rgba(255,255,255,0.9)' },
+  cameraBadge: { position: 'absolute', right: -2, bottom: -2, width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.primary, borderWidth: 2, borderColor: Colors.surface },
   userMeta: {
     marginLeft: Spacing.base,
     flex: 1,
+    zIndex: 1,
   },
   userName: {
     fontSize: 18,
@@ -278,6 +485,8 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginTop: 2,
   },
+  userPhone: { fontSize: 12, color: Colors.textSecondary, marginTop: 3 },
+  editButton: { zIndex: 1, width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.surface, opacity: 0.9 },
   card: {
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.lg,
@@ -371,6 +580,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  settingIcon: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.surfaceSubtle, marginRight: Spacing.sm },
+  settingCopy: { flex: 1, marginRight: Spacing.sm },
+  settingDivider: { height: 1, backgroundColor: Colors.borderLight, marginVertical: Spacing.sm },
   settingLabel: {
     fontSize: 14,
     fontWeight: '600',
@@ -380,6 +592,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textSecondary,
     marginTop: 2,
+  },
+  environmentBadge: {
+    color: Colors.primary,
+    backgroundColor: Colors.surfaceSubtle,
+    borderRadius: BorderRadius.full,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase',
   },
   logoutBtn: {
     borderColor: Colors.danger,
@@ -406,6 +628,7 @@ const styles = StyleSheet.create({
     color: Colors.text,
     marginBottom: Spacing.xs,
   },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing.base },
   modalSubtitle: {
     fontSize: 13,
     color: Colors.textSecondary,
@@ -417,4 +640,8 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     gap: Spacing.sm,
   },
+  passwordIcon: { width: 52, height: 52, borderRadius: 26, alignSelf: 'center', alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.surfaceSubtle, marginBottom: Spacing.md },
+  passwordTitle: { color: Colors.text, fontSize: 19, fontWeight: '900', textAlign: 'center' },
+  passwordSubtitle: { color: Colors.textSecondary, fontSize: 12, textAlign: 'center', marginTop: Spacing.xs, marginBottom: Spacing.lg },
+  passwordAction: { flex: 1 },
 });

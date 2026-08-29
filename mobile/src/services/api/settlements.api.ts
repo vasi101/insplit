@@ -10,6 +10,7 @@ export interface RecordSettlementPayload {
   settlementDate: string;
   method?: PaymentMethod;
   note?: string;
+  proofImage?: string;
 }
 
 export async function getRoomBalances(
@@ -30,5 +31,15 @@ export async function getSettlementHistory(roomId: string): Promise<Settlement[]
 
 export async function recordSettlement(payload: RecordSettlementPayload): Promise<Settlement> {
   const res = await apiClient.post<ApiResponse<{ settlement: Settlement }>>('/settlements', payload);
+  return res.data.data!.settlement;
+}
+
+export async function approveSettlement(settlementId: string): Promise<Settlement> {
+  const res = await apiClient.post<ApiResponse<{ settlement: Settlement }>>(`/settlements/${settlementId}/approve`);
+  return res.data.data!.settlement;
+}
+
+export async function rejectSettlement(settlementId: string): Promise<Settlement> {
+  const res = await apiClient.post<ApiResponse<{ settlement: Settlement }>>(`/settlements/${settlementId}/reject`);
   return res.data.data!.settlement;
 }

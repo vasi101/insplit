@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,6 @@ import {
   Platform,
   TouchableOpacity,
   Image,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -19,8 +18,11 @@ import { useFeedStore } from '../../../src/store/feed.store';
 import { Button } from '../../../src/components/ui/Button';
 import { Input } from '../../../src/components/ui/Input';
 import { uploadImages } from '../../../src/services/api/upload.api';
-import { Colors, Spacing, BorderRadius } from '../../../constants/theme';
+import { extractErrorMessage } from '../../../src/services/api/client';
+import { Spacing, BorderRadius, ThemeColors } from '../../../constants/theme';
+import { useThemeColors } from '../../../src/store/theme.store';
 import { TransactionCategory } from '../../../src/types';
+import { NoticeModal } from '../../../src/components/ui/NoticeModal';
 
 const CATEGORIES: TransactionCategory[] = [
   'GROCERY',
@@ -35,6 +37,8 @@ const CATEGORIES: TransactionCategory[] = [
 ];
 
 export default function CreateExpenseScreen() {
+  const Colors = useThemeColors();
+  const styles = useMemo(() => createStyles(Colors), [Colors]);
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const currentRoom = useRoomStore((state) => state.currentRoom);
@@ -49,11 +53,12 @@ export default function CreateExpenseScreen() {
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ title?: string; amount?: string }>({});
+  const [notice, setNotice] = useState<{ title: string; message: string; kind: 'success' | 'error' | 'warning'; closeScreen?: boolean } | null>(null);
 
   const pickImage = async () => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permissionResult.granted) {
-      Alert.alert('Permission Denied', 'Permission to access your photos is required to attach receipts.');
+      setNotice({ title: 'Photo access needed', message: 'Allow photo access to attach a receipt.', kind: 'warning' });
       return;
     }
 
@@ -72,7 +77,7 @@ export default function CreateExpenseScreen() {
   const takePhoto = async () => {
     const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
     if (!permissionResult.granted) {
-      Alert.alert('Permission Denied', 'Permission to access your camera is required to take photos of receipts.');
+      setNotice({ title: 'Camera access needed', message: 'Allow camera access to photograph a receipt.', kind: 'warning' });
       return;
     }
 
@@ -102,7 +107,7 @@ export default function CreateExpenseScreen() {
 
   const handleSubmit = async () => {
     if (!currentRoom) {
-      Alert.alert('No Room', 'Please select a room before adding expenses.');
+      setNotice({ title: 'Select a room', message: 'Choose a room before adding an expense.', kind: 'warning' });
       return;
     }
     if (!validate()) return;
@@ -113,9 +118,10 @@ export default function CreateExpenseScreen() {
       if (imageUri) {
         try {
           uploadedUrls = await uploadImages([{ uri: imageUri }]);
-        } catch {
-          // If upload fails (e.g. Cloudinary not configured), still allow transaction creation
-          console.warn('Image upload failed, creating transaction without image.');
+        } catch (uploadError) {
+          const message = extractErrorMessage(uploadError);
+          console.error('Receipt image upload failed:', message);
+          throw new Error(`Receipt upload failed: ${message}. Please retry or remove the photo.`);
         }
       }
 
@@ -131,13 +137,9 @@ export default function CreateExpenseScreen() {
         images: uploadedUrls,
       });
 
-      Alert.alert(
-        'Expense Created ⏳',
-        'Your expense is pending verification. Other room members have been notified to review and approve.',
-        [{ text: 'OK', onPress: () => router.back() }]
-      );
+      setNotice({ title: 'Expense created', message: 'Waiting for verification.', kind: 'success', closeScreen: true });
     } catch (err: unknown) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to create expense');
+      setNotice({ title: 'Could not create expense', message: extractErrorMessage(err), kind: 'error' });
     } finally {
       setIsSubmitting(false);
     }
@@ -266,11 +268,23 @@ export default function CreateExpenseScreen() {
           style={styles.submitBtn}
         />
       </ScrollView>
+      <NoticeModal
+        visible={Boolean(notice)}
+        title={notice?.title || ''}
+        message={notice?.message}
+        kind={notice?.kind}
+        confirmLabel={notice?.closeScreen ? 'Done' : 'OK'}
+        onConfirm={() => {
+          const closeScreen = notice?.closeScreen;
+          setNotice(null);
+          if (closeScreen) router.back();
+        }}
+      />
     </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (Colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,

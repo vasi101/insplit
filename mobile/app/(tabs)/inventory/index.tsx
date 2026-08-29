@@ -1,8 +1,12 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, Platform, StatusBar } from 'react-native';
-import { Colors, Spacing, BorderRadius, Shadows } from '../../../constants/theme';
+import React, { useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Spacing, BorderRadius, Shadows, ThemeColors } from '../../../constants/theme';
+import { useThemeColors } from '../../../src/store/theme.store';
 
 export default function InventoryScreen() {
+  const Colors = useThemeColors();
+  const styles = useMemo(() => createStyles(Colors), [Colors]);
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -61,11 +65,10 @@ export default function InventoryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (Colors: ThemeColors) => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: Colors.background,
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   container: {
     flex: 1,

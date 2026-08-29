@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,8 @@ import {
   TextInput,
   Modal,
 } from 'react-native';
-import { Colors, BorderRadius, Spacing, Shadows } from '../../../constants/theme';
+import { BorderRadius, Spacing, Shadows, ThemeColors } from '../../../constants/theme';
+import { useThemeColors } from '../../store/theme.store';
 import { Transaction } from '../../types';
 import { Avatar } from '../ui/Avatar';
 import { Badge } from '../ui/Badge';
@@ -30,6 +31,8 @@ export function TransactionCard({
   onReject,
   onPress,
 }: TransactionCardProps) {
+  const Colors = useThemeColors();
+  const styles = useMemo(() => createStyles(Colors), [Colors]);
   const [isApproving, setIsApproving] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
   const [rejectModalVisible, setRejectModalVisible] = useState(false);
@@ -235,7 +238,7 @@ export function TransactionCard({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (Colors: ThemeColors) => StyleSheet.create({
   card: {
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.lg,
