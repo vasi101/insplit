@@ -7,6 +7,7 @@ export interface IUser extends Document {
   email: string;
   passwordHash: string;
   profileImage?: string;
+  phone?: string;
   pushToken?: string;
   refreshToken?: string;
   createdAt: Date;
@@ -36,6 +37,12 @@ const UserSchema = new Schema<IUser>(
     },
     profileImage: {
       type: String,
+      default: null,
+    },
+    phone: {
+      type: String,
+      trim: true,
+      maxlength: 24,
       default: null,
     },
     pushToken: {

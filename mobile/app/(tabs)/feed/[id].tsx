@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -16,10 +16,13 @@ import { Avatar } from '../../../src/components/ui/Avatar';
 import { Badge } from '../../../src/components/ui/Badge';
 import { Button } from '../../../src/components/ui/Button';
 import { formatCurrency, formatDateTime, formatDate } from '../../../src/utils/format';
-import { Colors, Spacing, BorderRadius, Shadows } from '../../../constants/theme';
+import { Spacing, BorderRadius, Shadows, ThemeColors } from '../../../constants/theme';
+import { useThemeColors } from '../../../src/store/theme.store';
 import { Transaction } from '../../../src/types';
 
 export default function TransactionDetailsScreen() {
+  const Colors = useThemeColors();
+  const styles = useMemo(() => createStyles(Colors), [Colors]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
@@ -58,7 +61,7 @@ export default function TransactionDetailsScreen() {
     );
   }
 
-  const isCreator = transaction.createdBy._id === user?._id;
+  const isCreator = transaction.createdBy?._id === user?._id;
   const isPending = transaction.status === 'PENDING';
   const canVerify = !isCreator && isPending;
 
@@ -118,9 +121,10 @@ export default function TransactionDetailsScreen() {
         ]);
   };
 
+  const verifiedBy = transaction.verification?.verifiedBy;
   const verifierName =
-    typeof transaction.verification?.verifiedBy === 'object'
-      ? transaction.verification.verifiedBy.name
+    verifiedBy && typeof verifiedBy === 'object'
+      ? verifiedBy.name
       : null;
 
   return (
@@ -246,7 +250,7 @@ export default function TransactionDetailsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (Colors: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,

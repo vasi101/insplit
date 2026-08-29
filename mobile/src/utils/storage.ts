@@ -5,6 +5,8 @@ const ACCESS_TOKEN_KEY = 'insplit_access_token';
 const REFRESH_TOKEN_KEY = 'insplit_refresh_token';
 const CURRENT_ROOM_KEY = 'insplit_current_room_id';
 const BASE_URL_KEY = 'insplit_base_url_custom';
+const BIOMETRIC_CREDENTIALS_KEY = 'insplit_biometric_credentials';
+const BIOMETRIC_ENABLED_KEY = 'insplit_biometric_enabled';
 
 export async function setItem(key: string, value: string): Promise<void> {
   if (Platform.OS === 'web') {
@@ -75,9 +77,41 @@ export async function clearCurrentRoomId(): Promise<void> {
 
 // Custom base url override
 export async function saveCustomBaseUrl(url: string): Promise<void> {
-  await setItem(BASE_URL_KEY, url);
+  await setItem(BASE_URL_KEY, url.trim().replace(/\/+$/, ''));
 }
 
 export async function getCustomBaseUrl(): Promise<string | null> {
   return getItem(BASE_URL_KEY);
+}
+
+export async function saveBiometricCredentials(email: string, password: string): Promise<void> {
+  if (Platform.OS === 'web') return;
+  await SecureStore.setItemAsync(BIOMETRIC_CREDENTIALS_KEY, JSON.stringify({ email, password }), {
+    requireAuthentication: true,
+    authenticationPrompt: 'Confirm your identity to enable biometric login',
+  });
+  await setItem(BIOMETRIC_ENABLED_KEY, 'true');
+}
+
+export async function getBiometricCredentials(): Promise<{ email: string; password: string } | null> {
+  if (Platform.OS === 'web') return null;
+  const value = await SecureStore.getItemAsync(BIOMETRIC_CREDENTIALS_KEY, {
+    requireAuthentication: true,
+    authenticationPrompt: 'Sign in to Insplit',
+  });
+  if (!value) return null;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+export async function isBiometricLoginEnabled(): Promise<boolean> {
+  return (await getItem(BIOMETRIC_ENABLED_KEY)) === 'true';
+}
+
+export async function clearBiometricCredentials(): Promise<void> {
+  await removeItem(BIOMETRIC_CREDENTIALS_KEY);
+  await removeItem(BIOMETRIC_ENABLED_KEY);
 }

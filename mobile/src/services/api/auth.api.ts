@@ -31,12 +31,16 @@ export async function logout(): Promise<void> {
   await apiClient.post<ApiResponse<null>>('/auth/logout');
 }
 
+export async function verifyPassword(password: string): Promise<void> {
+  await apiClient.post<ApiResponse<null>>('/auth/verify-password', { password });
+}
+
 export async function getMe(): Promise<User> {
   const res = await apiClient.get<ApiResponse<{ user: User }>>('/auth/me');
   return res.data.data!.user;
 }
 
-export async function updateProfile(payload: { name?: string; profileImage?: string }): Promise<User> {
+export async function updateProfile(payload: { name?: string; profileImage?: string; phone?: string }): Promise<User> {
   const res = await apiClient.patch<ApiResponse<{ user: User }>>('/auth/me', payload);
   return res.data.data!.user;
 }

@@ -13,7 +13,9 @@ export const apiClient = axios.create({
 // Update baseURL dynamically if custom url is saved
 export async function syncBaseUrl(): Promise<void> {
   const customUrl = await getCustomBaseUrl();
-  const base = customUrl || API_CONFIG.BASE_URL;
+  const base = API_CONFIG.HAS_ENV_OVERRIDE
+    ? API_CONFIG.BASE_URL
+    : (customUrl?.trim().replace(/\/+$/, '') || API_CONFIG.BASE_URL);
   apiClient.defaults.baseURL = `${base}${API_CONFIG.API_PREFIX}`;
 }
 
@@ -76,7 +78,9 @@ apiClient.interceptors.response.use(
         }
 
         const customUrl = await getCustomBaseUrl();
-        const base = customUrl || API_CONFIG.BASE_URL;
+        const base = API_CONFIG.HAS_ENV_OVERRIDE
+          ? API_CONFIG.BASE_URL
+          : (customUrl?.trim().replace(/\/+$/, '') || API_CONFIG.BASE_URL);
         
         const response = await axios.post(`${base}${API_CONFIG.API_PREFIX}/auth/refresh`, {
           refreshToken,

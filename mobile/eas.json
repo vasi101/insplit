@@ -9,10 +9,16 @@
       "distribution": "internal"
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_PRODUCTION_API_URL": "https://insplit-wine.vercel.app"
+      }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_PRODUCTION_API_URL": "https://insplit-wine.vercel.app"
+      }
     }
   },
   "submit": {

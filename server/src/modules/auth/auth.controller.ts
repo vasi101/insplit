@@ -7,6 +7,7 @@ import { successResponse, errorResponse } from '../../utils/response';
 export const updateProfileValidation = [
   body('name').optional().trim().notEmpty().withMessage('Name cannot be empty').isLength({ max: 100 }),
   body('profileImage').optional().isURL().withMessage('profileImage must be a valid URL'),
+  body('phone').optional().trim().isLength({ max: 24 }).withMessage('Phone number is too long'),
 ];
 
 // Validation rules
@@ -20,6 +21,10 @@ export const registerValidation = [
 
 export const loginValidation = [
   body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
+  body('password').notEmpty().withMessage('Password is required'),
+];
+
+export const verifyPasswordValidation = [
   body('password').notEmpty().withMessage('Password is required'),
 ];
 
@@ -84,6 +89,16 @@ export async function logout(req: Request, res: Response, next: NextFunction): P
   }
 }
 
+export async function verifyPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+  if (handleValidationErrors(req, res)) return;
+  try {
+    await authService.verifyUserPassword(req.user!.userId, req.body.password);
+    res.status(200).json(successResponse(null, 'Identity confirmed'));
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function getMe(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const user = await authService.getUserById(req.user!.userId);
@@ -117,6 +132,7 @@ export async function updateProfile(req: Request, res: Response, next: NextFunct
     const user = await authService.updateProfile(req.user!.userId, {
       name: req.body.name,
       profileImage: req.body.profileImage,
+      phone: req.body.phone,
     });
     res.status(200).json(successResponse({ user }, 'Profile updated successfully'));
   } catch (error) {

@@ -2,6 +2,13 @@ import mongoose from 'mongoose';
 import { Room, IRoom } from './room.model';
 import { createError } from '../../middleware/error.middleware';
 
+function memberUserId(value: unknown): string {
+  if (value && typeof value === 'object' && '_id' in value) {
+    return String((value as { _id: unknown })._id);
+  }
+  return String(value ?? '');
+}
+
 function generateInviteCode(): string {
   // Format: FLAT-XXXXX (uppercase alphanumeric)
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -55,7 +62,7 @@ export async function joinRoom(userId: string, inviteCode: string): Promise<IRoo
   }
 
   const existingMember = room.members.find(
-    (m) => m.userId.toString() === userId && m.status !== 'REMOVED'
+    (m) => memberUserId(m.userId) === userId && m.status !== 'REMOVED'
   );
 
   if (existingMember) {
@@ -92,7 +99,7 @@ export async function getRoomById(roomId: string, userId: string): Promise<IRoom
   }
 
   const isMember = room.members.some(
-    (m) => m.userId.toString() === userId && m.status === 'ACTIVE'
+    (m) => memberUserId(m.userId) === userId && m.status === 'ACTIVE'
   );
 
   if (!isMember) {
@@ -106,7 +113,7 @@ export async function regenerateInviteCode(roomId: string, userId: string): Prom
   const room = await Room.findById(roomId);
   if (!room) throw createError('Room not found', 404, 'ROOM_NOT_FOUND');
 
-  const member = room.members.find((m) => m.userId.toString() === userId);
+  const member = room.members.find((m) => memberUserId(m.userId) === userId);
   if (!member || member.role !== 'OWNER') {
     throw createError('Only the room owner can regenerate the invite code', 403, 'FORBIDDEN');
   }
@@ -119,7 +126,7 @@ export async function regenerateInviteCode(roomId: string, userId: string): Prom
 
 export function isRoomMember(room: IRoom, userId: string): boolean {
   return room.members.some(
-    (m) => m.userId.toString() === userId && m.status === 'ACTIVE'
+    (m) => memberUserId(m.userId) === userId && m.status === 'ACTIVE'
   );
 }
 
@@ -128,7 +135,7 @@ export async function leaveRoom(roomId: string, userId: string): Promise<void> {
   if (!room) throw createError('Room not found', 404, 'ROOM_NOT_FOUND');
 
   const member = room.members.find(
-    (m) => m.userId.toString() === userId && m.status === 'ACTIVE'
+    (m) => memberUserId(m.userId) === userId && m.status === 'ACTIVE'
   );
   if (!member) throw createError('You are not an active member of this room', 403, 'NOT_MEMBER');
 
@@ -150,7 +157,7 @@ export async function removeMember(roomId: string, ownerId: string, targetUserId
 
   // Only the owner can remove members
   const ownerMember = room.members.find(
-    (m) => m.userId.toString() === ownerId && m.status === 'ACTIVE'
+    (m) => memberUserId(m.userId) === ownerId && m.status === 'ACTIVE'
   );
   if (!ownerMember || ownerMember.role !== 'OWNER') {
     throw createError('Only the room owner can remove members', 403, 'FORBIDDEN');
@@ -161,7 +168,7 @@ export async function removeMember(roomId: string, ownerId: string, targetUserId
   }
 
   const targetMember = room.members.find(
-    (m) => m.userId.toString() === targetUserId && m.status === 'ACTIVE'
+    (m) => memberUserId(m.userId) === targetUserId && m.status === 'ACTIVE'
   );
   if (!targetMember) {
     throw createError('Member not found in this room', 404, 'MEMBER_NOT_FOUND');

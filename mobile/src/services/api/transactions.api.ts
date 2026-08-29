@@ -40,6 +40,22 @@ export async function listTransactions(params: ListTransactionsParams): Promise<
   return res.data.data!;
 }
 
+/** Fetches the complete verified expense history used by settlement breakdowns. */
+export async function listAllVerifiedTransactions(roomId: string): Promise<Transaction[]> {
+  const transactions: Transaction[] = [];
+  let page = 1;
+  let pages = 1;
+
+  do {
+    const result = await listTransactions({ roomId, status: 'VERIFIED', page, limit: 100 });
+    transactions.push(...result.transactions);
+    pages = result.pages;
+    page += 1;
+  } while (page <= pages);
+
+  return transactions;
+}
+
 export async function getTransactionById(transactionId: string): Promise<Transaction> {
   const res = await apiClient.get<ApiResponse<{ transaction: Transaction }>>(`/transactions/${transactionId}`);
   return res.data.data!.transaction;

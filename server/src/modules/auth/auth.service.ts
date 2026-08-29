@@ -96,6 +96,13 @@ export async function logoutUser(userId: string): Promise<void> {
   await User.findByIdAndUpdate(userId, { refreshToken: null });
 }
 
+export async function verifyUserPassword(userId: string, password: string): Promise<void> {
+  const user = await User.findById(userId).select('+passwordHash');
+  if (!user || !(await user.comparePassword(password))) {
+    throw createError('Incorrect password', 401, 'INVALID_CREDENTIALS');
+  }
+}
+
 export async function updatePushToken(userId: string, pushToken: string): Promise<void> {
   await User.findByIdAndUpdate(userId, { pushToken });
 }
@@ -107,12 +114,14 @@ export async function getUserById(userId: string): Promise<IUser | null> {
 export interface UpdateProfileInput {
   name?: string;
   profileImage?: string;
+  phone?: string;
 }
 
 export async function updateProfile(userId: string, input: UpdateProfileInput): Promise<IUser> {
-  const updates: Partial<{ name: string; profileImage: string }> = {};
+  const updates: Partial<{ name: string; profileImage: string; phone: string }> = {};
   if (input.name !== undefined) updates.name = input.name.trim();
   if (input.profileImage !== undefined) updates.profileImage = input.profileImage;
+  if (input.phone !== undefined) updates.phone = input.phone.trim();
 
   const user = await User.findByIdAndUpdate(userId, updates, { new: true });
   if (!user) throw createError('User not found', 404, 'NOT_FOUND');

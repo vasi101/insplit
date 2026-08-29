@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -9,12 +9,16 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../src/store/auth.store';
 import { Button } from '../../src/components/ui/Button';
 import { Input } from '../../src/components/ui/Input';
-import { Colors, Spacing, BorderRadius } from '../../constants/theme';
+import { Spacing, BorderRadius, ThemeColors, Shadows } from '../../constants/theme';
+import { useThemeColors } from '../../src/store/theme.store';
 
 export default function RegisterScreen() {
+  const Colors = useThemeColors();
+  const styles = useMemo(() => createStyles(Colors), [Colors]);
   const router = useRouter();
   const registerUser = useAuthStore((state) => state.register);
   const isLoading = useAuthStore((state) => state.isLoading);
@@ -66,10 +70,8 @@ export default function RegisterScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
+    <SafeAreaView style={styles.safeArea}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.container}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -146,18 +148,24 @@ export default function RegisterScreen() {
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (Colors: ThemeColors) => StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: Colors.background },
   container: {
     flex: 1,
     backgroundColor: Colors.background,
   },
   scrollContent: {
     flexGrow: 1,
-    padding: Spacing.xl,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.xl,
     justifyContent: 'center',
+    width: '100%',
+    maxWidth: 520,
+    alignSelf: 'center',
   },
   header: {
     marginBottom: Spacing.xl,
@@ -200,6 +208,12 @@ const styles = StyleSheet.create({
   },
   form: {
     width: '100%',
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.lg,
+    ...Shadows.card,
   },
   submitButton: {
     marginTop: Spacing.sm,

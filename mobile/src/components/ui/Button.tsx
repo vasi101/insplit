@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   TouchableOpacity,
   Text,
@@ -8,7 +8,8 @@ import {
   TextStyle,
   TouchableOpacityProps,
 } from 'react-native';
-import { Colors, BorderRadius, Spacing } from '../../../constants/theme';
+import { BorderRadius, Spacing, ThemeColors } from '../../../constants/theme';
+import { useThemeColors } from '../../store/theme.store';
 
 export interface ButtonProps extends TouchableOpacityProps {
   title: string;
@@ -31,6 +32,8 @@ export function Button({
   icon,
   ...props
 }: ButtonProps) {
+  const Colors = useThemeColors();
+  const styles = useMemo(() => createStyles(Colors), [Colors]);
   const isDisabled = disabled || loading;
 
   return (
@@ -75,7 +78,7 @@ export function Button({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (Colors: ThemeColors) => StyleSheet.create({
   base: {
     flexDirection: 'row',
     alignItems: 'center',

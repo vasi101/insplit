@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -6,11 +6,9 @@ import {
   FlatList,
   RefreshControl,
   TouchableOpacity,
-  SafeAreaView,
-  Platform,
-  StatusBar,
   Modal,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../../src/store/auth.store';
 import { useRoomStore } from '../../../src/store/room.store';
@@ -18,7 +16,8 @@ import { useFeedStore, FeedFilter } from '../../../src/store/feed.store';
 import { TransactionCard } from '../../../src/components/feed/TransactionCard';
 import { Button } from '../../../src/components/ui/Button';
 import { EmptyState } from '../../../src/components/ui/EmptyState';
-import { Colors, Spacing, BorderRadius, Shadows } from '../../../constants/theme';
+import { Spacing, BorderRadius, Shadows, ThemeColors } from '../../../constants/theme';
+import { useThemeColors } from '../../../src/store/theme.store';
 import { Transaction } from '../../../src/types';
 
 const FILTERS: { key: FeedFilter; label: string }[] = [
@@ -29,6 +28,8 @@ const FILTERS: { key: FeedFilter; label: string }[] = [
 ];
 
 export default function FeedScreen() {
+  const Colors = useThemeColors();
+  const styles = useMemo(() => createStyles(Colors), [Colors]);
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const rooms = useRoomStore((state) => state.rooms);
@@ -258,11 +259,10 @@ export default function FeedScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (Colors: ThemeColors) => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: Colors.background,
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   container: {
     flex: 1,

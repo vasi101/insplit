@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   TextInput,
@@ -8,7 +8,8 @@ import {
   ViewStyle,
   TouchableOpacity,
 } from 'react-native';
-import { Colors, BorderRadius, Spacing } from '../../../constants/theme';
+import { BorderRadius, Spacing, ThemeColors } from '../../../constants/theme';
+import { useThemeColors } from '../../store/theme.store';
 
 export interface InputProps extends TextInputProps {
   label?: string;
@@ -31,6 +32,8 @@ export function Input({
   style,
   ...props
 }: InputProps) {
+  const Colors = useThemeColors();
+  const styles = useMemo(() => createStyles(Colors), [Colors]);
   const [isFocused, setIsFocused] = useState(false);
   const [isSecure, setIsSecure] = useState(secureTextEntry);
 
@@ -73,7 +76,7 @@ export function Input({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (Colors: ThemeColors) => StyleSheet.create({
   container: {
     marginBottom: Spacing.base,
   },

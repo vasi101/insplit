@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, StyleSheet, ViewStyle, TouchableOpacity } from 'react-native';
-import { Colors, BorderRadius, Shadows, Spacing } from '../../../constants/theme';
+import { BorderRadius, Shadows, Spacing, ThemeColors } from '../../../constants/theme';
+import { useThemeColors } from '../../store/theme.store';
 
 export interface CardProps {
   children: React.ReactNode;
@@ -15,6 +16,8 @@ export function Card({
   onPress,
   variant = 'elevated',
 }: CardProps) {
+  const Colors = useThemeColors();
+  const styles = useMemo(() => createStyles(Colors), [Colors]);
   const cardStyles = [
     styles.base,
     variant === 'elevated' && styles.elevated,
@@ -38,7 +41,7 @@ export function Card({
   return <View style={cardStyles}>{children}</View>;
 }
 
-const styles = StyleSheet.create({
+const createStyles = (Colors: ThemeColors) => StyleSheet.create({
   base: {
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.lg,

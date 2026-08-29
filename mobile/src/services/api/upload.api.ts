@@ -24,9 +24,10 @@ export async function uploadImages(images: ImageAsset[]): Promise<string[]> {
   });
 
   const res = await apiClient.post<ApiResponse<{ urls: string[] }>>('/upload', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
+    // Photo uploads can take longer on mobile networks. Axios must set the
+    // multipart boundary itself; forcing Content-Type can produce an invalid body.
+    timeout: 60_000,
+    headers: { 'Content-Type': undefined },
   });
 
   return res.data.data!.urls;
