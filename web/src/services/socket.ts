@@ -1,5 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import { getStoredTokens, getApiBaseUrl } from './api';
+import { clientCache } from '../utils/cache';
 
 let socket: Socket | null = null;
 
@@ -59,8 +60,31 @@ export function getAdminSocket(): Socket | null {
     'room:deleted',
   ];
 
+  // Invalidation map: socket event → cache prefixes to purge
+  const invalidationMap: Record<string, string[]> = {
+    'transaction:created':  ['transactions:', 'stats'],
+    'transaction:approved': ['transactions:', 'stats'],
+    'transaction:rejected': ['transactions:', 'stats'],
+    'transaction:updated':  ['transactions:', 'stats'],
+    'transaction:deleted':  ['transactions:', 'stats'],
+    'inventory:created':   ['inventory:', 'stats'],
+    'inventory:updated':   ['inventory:', 'stats'],
+    'inventory:deleted':   ['inventory:', 'stats'],
+    'user:created':        ['users:', 'stats'],
+    'user:updated':        ['users:', 'stats'],
+    'user:deleted':        ['users:', 'stats'],
+    'room:created':        ['rooms:', 'stats'],
+    'room:updated':        ['rooms:', 'stats'],
+    'room:deleted':        ['rooms:', 'stats'],
+  };
+
   events.forEach((evt) => {
     socket?.on(evt, (data) => {
+      // Auto-purge matching cache prefixes
+      const prefixes = invalidationMap[evt];
+      if (prefixes) {
+        prefixes.forEach((prefix) => clientCache.deletePrefix(prefix));
+      }
       const listeners = eventListeners.get(evt);
       if (listeners) {
         listeners.forEach((fn) => fn(data));

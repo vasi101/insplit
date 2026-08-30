@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { InventoryItem, InventoryCategory, InventoryUnit } from './inventory.model';
 import { emitToRoom } from '../../sockets/socket.server';
+import { serverCache } from '../../utils/cache';
 
 export interface CreateItemPayload {
   roomId: string;
@@ -20,11 +21,13 @@ export interface UpdateItemPayload {
 }
 
 export async function getItemsByRoom(roomId: string) {
-  return InventoryItem.find({ roomId: new mongoose.Types.ObjectId(roomId), isActive: true })
-    .populate('addedBy', 'name profileImage')
-    .populate('lastUpdatedBy', 'name profileImage')
-    .sort({ category: 1, name: 1 })
-    .lean();
+  return serverCache.getOrSet(`inventory:room:${roomId}`, async () => {
+    return InventoryItem.find({ roomId: new mongoose.Types.ObjectId(roomId), isActive: true })
+      .populate('addedBy', 'name profileImage')
+      .populate('lastUpdatedBy', 'name profileImage')
+      .sort({ category: 1, name: 1 })
+      .lean();
+  }, 180);
 }
 
 export async function addItem(userId: string, payload: CreateItemPayload) {
@@ -43,6 +46,10 @@ export async function addItem(userId: string, payload: CreateItemPayload) {
     { path: 'addedBy', select: 'name profileImage' },
     { path: 'lastUpdatedBy', select: 'name profileImage' },
   ]);
+
+  // Invalidate caches
+  serverCache.del(`inventory:room:${payload.roomId}`);
+  serverCache.delPattern('admin:');
 
   // Real-time broadcast to room members and admin dashboard
   emitToRoom(payload.roomId, 'inventory:created', { item: populated });
@@ -71,6 +78,8 @@ export async function updateItem(itemId: string, userId: string, payload: Update
   ]);
 
   if (item) {
+    serverCache.del(`inventory:room:${item.roomId.toString()}`);
+    serverCache.delPattern('admin:');
     emitToRoom(item.roomId.toString(), 'inventory:updated', { item });
   }
 
@@ -80,6 +89,8 @@ export async function updateItem(itemId: string, userId: string, payload: Update
 export async function deleteItem(itemId: string) {
   const item = await InventoryItem.findByIdAndUpdate(itemId, { $set: { isActive: false } }, { new: true });
   if (item) {
+    serverCache.del(`inventory:room:${item.roomId.toString()}`);
+    serverCache.delPattern('admin:');
     emitToRoom(item.roomId.toString(), 'inventory:deleted', { itemId: item._id.toString() });
   }
   return item;

@@ -9,17 +9,19 @@ import { Settlement } from '../settlements/settlement.model';
 import { createError } from '../../middleware/error.middleware';
 import { sendCodeEmail } from '../../notifications/email.service';
 import { emitToRoom, emitToAdmin, emitGlobal } from '../../sockets/socket.server';
+import { serverCache } from '../../utils/cache';
 
 const SALT_ROUNDS = 12;
 
 // ─── Analytics & Dashboard Stats ──────────────────────────────────────────────
 
 export async function getDashboardStats() {
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  return serverCache.getOrSet('admin:dashboard:stats', async () => {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-  const sixMonthsAgo = new Date();
-  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
   // 1. Overview counts
   const [
@@ -189,6 +191,7 @@ export async function getDashboardStats() {
       rooms: recentRooms,
     },
   };
+  }, 60);
 }
 
 // ─── User Management ──────────────────────────────────────────────────────────
@@ -343,6 +346,7 @@ export async function createUser(payload: {
     emailVerified: payload.emailVerified !== undefined ? payload.emailVerified : true,
   });
 
+  serverCache.delPattern('admin:');
   emitToAdmin('user:created', { user });
   return user;
 }
@@ -378,6 +382,7 @@ export async function updateUser(
   }
 
   await user.save();
+  serverCache.delPattern('admin:');
   emitToAdmin('user:updated', { user });
   return user;
 }
@@ -393,6 +398,7 @@ export async function deleteUser(userId: string) {
   );
 
   await User.findByIdAndDelete(userId);
+  serverCache.delPattern('admin:');
   emitToAdmin('user:deleted', { userId });
   return { success: true };
 }
@@ -400,6 +406,7 @@ export async function deleteUser(userId: string) {
 export async function setUserAdminRole(userId: string, isAdmin: boolean) {
   const user = await User.findByIdAndUpdate(userId, { isAdmin }, { new: true });
   if (!user) throw createError('User not found', 404, 'NOT_FOUND');
+  serverCache.delPattern('admin:');
   emitToAdmin('user:updated', { user });
   return user;
 }
@@ -424,6 +431,7 @@ export async function sendUserVerificationEmail(userId: string) {
     code,
   });
 
+  serverCache.delPattern('admin:');
   emitToAdmin('user:updated', { user });
   return { success: true, email: user.email };
 }
@@ -431,6 +439,7 @@ export async function sendUserVerificationEmail(userId: string) {
 export async function toggleUserVerification(userId: string, emailVerified: boolean) {
   const user = await User.findByIdAndUpdate(userId, { emailVerified }, { new: true });
   if (!user) throw createError('User not found', 404, 'NOT_FOUND');
+  serverCache.delPattern('admin:');
   emitToAdmin('user:updated', { user });
   return user;
 }
@@ -529,6 +538,7 @@ export async function createTransactionAdmin(payload: {
   ]);
 
   emitToRoom(payload.roomId, 'transaction:created', { transaction: populated });
+  serverCache.delPattern('admin:');
   return populated;
 }
 
@@ -536,6 +546,7 @@ export async function deleteTransaction(transactionId: string) {
   const tx = await Transaction.findByIdAndDelete(transactionId);
   if (!tx) throw createError('Transaction not found', 404, 'NOT_FOUND');
   emitToRoom(tx.roomId.toString(), 'transaction:deleted', { transactionId });
+  serverCache.delPattern('admin:');
   return { success: true };
 }
 
@@ -552,6 +563,7 @@ export async function updateTransactionStatusAdmin(transactionId: string, status
 
   if (!tx) throw createError('Transaction not found', 404, 'NOT_FOUND');
   emitToRoom(tx.roomId.toString(), 'transaction:updated', { transaction: tx });
+  serverCache.delPattern('admin:');
   return tx;
 }
 
@@ -610,6 +622,7 @@ export async function createRoomAdmin(payload: { name: string; description?: str
 
   const populated = await room.populate('createdBy', 'name email');
   emitToAdmin('room:created', { room: populated });
+  serverCache.delPattern('admin:');
   return populated;
 }
 
@@ -625,6 +638,7 @@ export async function deleteRoom(roomId: string) {
   ]);
 
   emitToAdmin('room:deleted', { roomId });
+  serverCache.delPattern('admin:');
   return { success: true };
 }
 
@@ -704,6 +718,7 @@ export async function addInventoryItemAdmin(
   ]);
 
   emitToRoom(payload.roomId, 'inventory:created', { item: populated });
+  serverCache.delPattern('admin:');
   return populated;
 }
 
@@ -737,6 +752,7 @@ export async function updateInventoryItemAdmin(
 
   if (!item) throw createError('Inventory item not found', 404, 'NOT_FOUND');
   emitToRoom(item.roomId.toString(), 'inventory:updated', { item });
+  serverCache.delPattern('admin:');
   return item;
 }
 
@@ -744,5 +760,6 @@ export async function deleteInventoryItemAdmin(itemId: string) {
   const item = await InventoryItem.findByIdAndDelete(itemId);
   if (!item) throw createError('Inventory item not found', 404, 'NOT_FOUND');
   emitToRoom(item.roomId.toString(), 'inventory:deleted', { itemId: item._id.toString() });
+  serverCache.delPattern('admin:');
   return { success: true };
 }
