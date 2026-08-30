@@ -16,6 +16,8 @@ interface InventoryState {
   addItem: (payload: inventoryApi.AddItemPayload) => Promise<InventoryItem>;
   updateItem: (itemId: string, payload: inventoryApi.UpdateItemPayload) => Promise<InventoryItem>;
   deleteItem: (itemId: string) => Promise<void>;
+  approveItem: (itemId: string) => Promise<InventoryItem>;
+  rejectItem: (itemId: string, reason?: string) => Promise<InventoryItem>;
   updateItemLocally: (item: InventoryItem) => void;
   removeItemLocally: (itemId: string) => void;
   clearError: () => void;
@@ -83,6 +85,30 @@ export const useInventoryStore = create<InventoryState>()(
           try {
             await inventoryApi.deleteItem(itemId);
             get().removeItemLocally(itemId);
+          } catch (err) {
+            const message = extractErrorMessage(err);
+            set({ error: message });
+            throw new Error(message);
+          }
+        },
+
+        approveItem: async (itemId) => {
+          try {
+            const item = await inventoryApi.approveItem(itemId);
+            get().updateItemLocally(item);
+            return item;
+          } catch (err) {
+            const message = extractErrorMessage(err);
+            set({ error: message });
+            throw new Error(message);
+          }
+        },
+
+        rejectItem: async (itemId, reason) => {
+          try {
+            const item = await inventoryApi.rejectItem(itemId, reason);
+            get().updateItemLocally(item);
+            return item;
           } catch (err) {
             const message = extractErrorMessage(err);
             set({ error: message });

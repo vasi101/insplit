@@ -21,7 +21,7 @@ export default function ResetPasswordScreen() {
     finally { setLoading(false); }
   };
   return <SafeAreaView style={styles.safe}><KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}><View style={styles.card}>
-    <Text style={styles.title}>Create new password</Text><Text style={styles.subtitle}>Enter the code sent to {email} and choose a new password.</Text>
+    <Text style={styles.title}>Create new password</Text>
     <Input label="Reset code" placeholder="123456" value={code} onChangeText={(v) => setCode(v.replace(/\D/g, '').slice(0, 6))} keyboardType="number-pad" />
     <Input label="New password" placeholder="At least 8 characters" value={password} onChangeText={setPassword} secureTextEntry />
     <Input label="Confirm password" placeholder="Repeat password" value={confirm} onChangeText={setConfirm} secureTextEntry />

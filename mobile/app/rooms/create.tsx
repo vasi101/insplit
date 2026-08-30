@@ -61,9 +61,6 @@ export default function CreateRoomScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <Text style={styles.title}>Create a Shared Room</Text>
-          <Text style={styles.subtitle}>
-            Set up a group for your flat, apartment, or shared living space to start tracking shared expenses.
-          </Text>
         </View>
 
         {error ? (

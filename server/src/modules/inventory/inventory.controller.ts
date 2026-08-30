@@ -45,7 +45,7 @@ function handleValidationErrors(req: Request, res: Response): boolean {
 export async function getItems(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { roomId } = req.params;
-    const items = await inventoryService.getItemsByRoom(roomId);
+    const items = await inventoryService.getItemsByRoom(roomId, req.user!.userId);
     res.status(200).json(successResponse({ items }));
   } catch (error) {
     next(error);
@@ -91,12 +91,35 @@ export async function updateItem(req: Request, res: Response, next: NextFunction
 
 export async function deleteItem(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const item = await inventoryService.deleteItem(req.params.itemId);
+    const item = await inventoryService.deleteItem(req.params.itemId, req.user!.userId);
     if (!item) {
       res.status(404).json(errorResponse('NOT_FOUND', 'Item not found'));
       return;
     }
     res.status(200).json(successResponse(null, 'Item removed from inventory'));
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function approveItem(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const item = await inventoryService.reviewItem(req.params.itemId, req.user!.userId, 'APPROVED');
+    res.status(200).json(successResponse({ item }, 'Inventory item approved'));
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function rejectItem(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const item = await inventoryService.reviewItem(
+      req.params.itemId,
+      req.user!.userId,
+      'REJECTED',
+      req.body.reason
+    );
+    res.status(200).json(successResponse({ item }, 'Inventory item rejected'));
   } catch (error) {
     next(error);
   }

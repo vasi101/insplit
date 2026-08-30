@@ -122,7 +122,6 @@ export default function LoginScreen() {
             <Text style={styles.logoText}>Insplit</Text>
           </View>
           <Text style={styles.title}>Welcome back</Text>
-          <Text style={styles.subtitle}>Sign in to continue to your shared space.</Text>
         </View>
 
         <View style={styles.form}>

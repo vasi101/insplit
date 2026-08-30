@@ -71,9 +71,6 @@ export default function FeedScreen() {
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyEmoji}>🏠</Text>
           <Text style={styles.emptyTitle}>You haven't joined a room yet</Text>
-          <Text style={styles.emptySubtitle}>
-            To start adding mutual expenses, create a room for your flat or join with an invite code from your flatmate.
-          </Text>
           <View style={styles.emptyActions}>
             <Button
               title="Create a Room"
@@ -170,11 +167,6 @@ export default function FeedScreen() {
               <EmptyState
                 icon={<Text style={{ fontSize: 44 }}>🧾</Text>}
                 title={filter === 'ALL' ? 'No expenses yet' : `No ${filter.toLowerCase()} expenses`}
-                description={
-                  filter === 'ALL'
-                    ? 'Tap the button below to add your first mutual expense for this room.'
-                    : 'Expenses in this category will appear here.'
-                }
                 actionTitle={filter === 'ALL' ? '+ Add First Expense' : undefined}
                 onAction={filter === 'ALL' ? () => router.push('/(tabs)/feed/create') : undefined}
               />

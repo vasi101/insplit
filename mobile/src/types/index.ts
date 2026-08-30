@@ -139,6 +139,13 @@ export interface InventoryItem {
   addedBy: User | string;
   lastUpdatedBy: User | string;
   isActive: boolean;
+  status: 'PENDING' | 'VERIFIED' | 'REJECTED';
+  verification?: {
+    verifiedBy?: User | string;
+    decision?: 'APPROVED' | 'REJECTED';
+    reason?: string;
+    verifiedAt?: string;
+  };
   createdAt: string;
   updatedAt: string;
 }

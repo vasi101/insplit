@@ -53,9 +53,6 @@ export default function JoinRoomScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <Text style={styles.title}>Join an Existing Room</Text>
-          <Text style={styles.subtitle}>
-            Enter the 5-character invitation code provided by your flatmate or roommate (e.g. FLAT-XXXXX).
-          </Text>
         </View>
 
         {error ? (

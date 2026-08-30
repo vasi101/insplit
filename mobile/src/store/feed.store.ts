@@ -24,6 +24,7 @@ interface FeedState {
   createTransaction: (payload: txApi.CreateTransactionPayload) => Promise<Transaction>;
   approveTransaction: (transactionId: string) => Promise<void>;
   rejectTransaction: (transactionId: string, reason?: string) => Promise<void>;
+  deleteTransaction: (transactionId: string) => Promise<void>;
   updateTransactionLocally: (transaction: Transaction) => void;
   clearError: () => void;
 }
@@ -128,6 +129,20 @@ export const useFeedStore = create<FeedState>()(
           try {
             const updated = await txApi.rejectTransaction(transactionId, reason);
             get().updateTransactionLocally(updated);
+          } catch (err) {
+            const message = extractErrorMessage(err);
+            set({ error: message });
+            throw new Error(message);
+          }
+        },
+
+        deleteTransaction: async (transactionId: string) => {
+          try {
+            await txApi.deleteTransaction(transactionId);
+            set((state) => ({
+              transactions: state.transactions.filter((transaction) => transaction._id !== transactionId),
+              total: Math.max(0, state.total - 1),
+            }));
           } catch (err) {
             const message = extractErrorMessage(err);
             set({ error: message });

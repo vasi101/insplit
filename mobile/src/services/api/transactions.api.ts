@@ -81,6 +81,10 @@ export async function updateTransaction(
   return res.data.data!.transaction;
 }
 
+export async function deleteTransaction(transactionId: string): Promise<void> {
+  await apiClient.delete(`/transactions/${transactionId}`);
+}
+
 export async function voidTransaction(transactionId: string): Promise<Transaction> {
   const res = await apiClient.post<ApiResponse<{ transaction: Transaction }>>(`/transactions/${transactionId}/void`);
   return res.data.data!.transaction;

@@ -20,7 +20,7 @@ export default function ForgotPasswordScreen() {
     finally { setLoading(false); }
   };
   return <SafeAreaView style={styles.safe}><KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}><View style={styles.card}>
-    <Text style={styles.title}>Forgot password?</Text><Text style={styles.subtitle}>Enter your email and we’ll send a 6-digit reset code.</Text>
+    <Text style={styles.title}>Forgot password?</Text>
     <Input label="Email address" placeholder="you@example.com" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
     <Button title="Send reset code" onPress={submit} loading={loading} size="lg" />
     <TouchableOpacity onPress={() => router.back()}><Text style={styles.link}>Back to sign in</Text></TouchableOpacity>

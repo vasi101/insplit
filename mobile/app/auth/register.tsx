@@ -81,9 +81,6 @@ export default function RegisterScreen() {
             <Text style={styles.logoText}>Insplit</Text>
           </View>
           <Text style={styles.title}>Create an account</Text>
-          <Text style={styles.subtitle}>
-            Join Insplit to effortlessly split expenses with your roommates.
-          </Text>
         </View>
 
         {error ? (

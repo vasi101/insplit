@@ -41,7 +41,6 @@ export default function VerifyEmailScreen() {
   return <SafeAreaView style={styles.safe}><KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <View style={styles.card}>
       <Text style={styles.title}>Verify your email</Text>
-      <Text style={styles.subtitle}>We sent a 6-digit code to {email}.</Text>
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <Input label="Verification code" placeholder="123456" value={code} onChangeText={(value) => setCode(value.replace(/\D/g, '').slice(0, 6))} keyboardType="number-pad" />
       <Button title="Verify email" onPress={submit} loading={isLoading} size="lg" />
