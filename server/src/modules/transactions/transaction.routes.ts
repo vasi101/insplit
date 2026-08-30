@@ -4,6 +4,7 @@ import {
   listTransactions,
   getTransactionById,
   updateTransaction,
+  deleteTransaction,
   approveTransaction,
   rejectTransaction,
   voidTransaction,
@@ -19,6 +20,7 @@ router.post('/', createTransactionValidation, createTransaction);
 router.get('/', listTransactions);
 router.get('/:transactionId', getTransactionById);
 router.patch('/:transactionId', updateTransaction);
+router.delete('/:transactionId', deleteTransaction);
 router.post('/:transactionId/approve', approveTransaction);
 router.post('/:transactionId/reject', rejectTransaction);
 router.post('/:transactionId/void', voidTransaction);

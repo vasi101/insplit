@@ -36,3 +36,13 @@ export async function updateItem(itemId: string, payload: UpdateItemPayload): Pr
 export async function deleteItem(itemId: string): Promise<void> {
   await apiClient.delete(`/inventory/${itemId}`);
 }
+
+export async function approveItem(itemId: string): Promise<InventoryItem> {
+  const res = await apiClient.post<ApiResponse<{ item: InventoryItem }>>(`/inventory/${itemId}/approve`);
+  return res.data.data!.item;
+}
+
+export async function rejectItem(itemId: string, reason?: string): Promise<InventoryItem> {
+  const res = await apiClient.post<ApiResponse<{ item: InventoryItem }>>(`/inventory/${itemId}/reject`, { reason });
+  return res.data.data!.item;
+}

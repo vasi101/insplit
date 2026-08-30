@@ -130,7 +130,6 @@ export default function SettlementScreen() {
         <EmptyState
           icon={<Text style={{ fontSize: 44 }}>🏠</Text>}
           title="No Room Selected"
-          description="Select or create a room to view settlements and balances."
         />
       </SafeAreaView>
     );
@@ -336,7 +335,6 @@ export default function SettlementScreen() {
             <View style={styles.chartHeader}>
               <View>
                 <Text style={styles.chartTitle}>Last 7 days</Text>
-                <Text style={styles.chartSubtitle}>Tap a bar for transaction details</Text>
               </View>
               <Text style={styles.chartHeaderTotal}>{formatCurrency(selectedDayReport.total, balancesData?.currency)}</Text>
             </View>

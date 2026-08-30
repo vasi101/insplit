@@ -28,10 +28,17 @@ export default function TransactionDetailsScreen() {
   const user = useAuthStore((state) => state.user);
   const approveTx = useFeedStore((state) => state.approveTransaction);
   const rejectTx = useFeedStore((state) => state.rejectTransaction);
+  const deleteTx = useFeedStore((state) => state.deleteTransaction);
 
   const [transaction, setTransaction] = useState<Transaction | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isActing, setIsActing] = useState(false);
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -63,7 +70,33 @@ export default function TransactionDetailsScreen() {
 
   const isCreator = transaction.createdBy?._id === user?._id;
   const isPending = transaction.status === 'PENDING';
-  const canVerify = !isCreator && isPending;
+  const correctionSeconds = Math.max(
+    0,
+    Math.ceil((new Date(transaction.createdAt).getTime() + 30_000 - now) / 1000)
+  );
+  const canCorrect = isCreator && isPending && correctionSeconds > 0;
+  const canVerify = !isCreator && isPending && correctionSeconds === 0;
+
+  const handleDelete = () => {
+    Alert.alert('Delete expense?', 'This permanently removes the pending expense.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          setIsActing(true);
+          try {
+            await deleteTx(transaction._id);
+            router.back();
+          } catch (err: unknown) {
+            Alert.alert('Could not delete', err instanceof Error ? err.message : 'Delete failed');
+          } finally {
+            setIsActing(false);
+          }
+        },
+      },
+    ]);
+  };
 
   const handleApprove = async () => {
     setIsActing(true);
@@ -182,30 +215,17 @@ export default function TransactionDetailsScreen() {
         <Text style={styles.sectionHeading}>Verification Status</Text>
         {transaction.status === 'VERIFIED' ? (
           <View style={styles.statusBoxSuccess}>
-            <Text style={styles.statusBoxTitle}>✅ Official Shared Expense</Text>
-            <Text style={styles.statusBoxSubtitle}>
-              Verified by {verifierName || 'Roommate'}{' '}
-              {transaction.verification?.verifiedAt
-                ? `on ${formatDateTime(transaction.verification.verifiedAt)}`
-                : ''}
-            </Text>
+            <Text style={[styles.statusBoxTitle, styles.statusTitleSuccess]}>✅ Official Shared Expense</Text>
+            <Text style={styles.statusMeta}>Verified by {verifierName || 'Roommate'}</Text>
           </View>
         ) : transaction.status === 'REJECTED' ? (
           <View style={styles.statusBoxDanger}>
-            <Text style={styles.statusBoxTitle}>❌ Transaction Rejected</Text>
-            <Text style={styles.statusBoxSubtitle}>
-              Rejected by {verifierName || 'Roommate'}
-              {transaction.verification?.reason ? `: "${transaction.verification.reason}"` : ''}
-            </Text>
+            <Text style={[styles.statusBoxTitle, styles.statusTitleDanger]}>❌ Transaction Rejected</Text>
+            <Text style={styles.statusMeta}>Rejected by {verifierName || 'Roommate'}</Text>
           </View>
         ) : (
           <View style={styles.statusBoxWarning}>
-            <Text style={styles.statusBoxTitle}>⏳ Pending Cross-Verification</Text>
-            <Text style={styles.statusBoxSubtitle}>
-              {isCreator
-                ? 'Your roommate must verify this transaction before it affects the settlement balance.'
-                : 'Please review the amount and receipt, then approve or reject below.'}
-            </Text>
+            <Text style={[styles.statusBoxTitle, styles.statusTitleWarning]}>⏳ Pending Cross-Verification</Text>
           </View>
         )}
       </View>
@@ -226,6 +246,49 @@ export default function TransactionDetailsScreen() {
       )}
 
       {/* Verification Actions */}
+      {!isCreator && isPending && correctionSeconds > 0 && (
+        <View style={styles.correctionCard}>
+          <Text style={styles.correctionTitle}>Review available in {correctionSeconds}s</Text>
+          <Text style={styles.correctionSubtitle}>
+            The creator can correct this expense during this time.
+          </Text>
+        </View>
+      )}
+
+      {isCreator && isPending && (
+        <View style={styles.correctionCard}>
+          <Text style={styles.correctionTitle}>
+            {canCorrect ? `Correction window: ${correctionSeconds}s` : 'Correction window expired'}
+          </Text>
+          <Text style={styles.correctionSubtitle}>
+            {canCorrect
+              ? 'You can edit or delete this expense before the timer ends.'
+              : 'This pending expense can no longer be changed.'}
+          </Text>
+          {canCorrect && (
+            <View style={styles.actionsCard}>
+              <Button
+                title="Delete"
+                variant="danger"
+                size="lg"
+                onPress={handleDelete}
+                loading={isActing}
+                style={{ flex: 1 }}
+              />
+              <Button
+                title={`Edit (${correctionSeconds}s)`}
+                size="lg"
+                onPress={() =>
+                  router.push({ pathname: '/(tabs)/feed/create', params: { editId: transaction._id } })
+                }
+                disabled={isActing}
+                style={{ flex: 1 }}
+              />
+            </View>
+          )}
+        </View>
+      )}
+
       {canVerify && (
         <View style={styles.actionsCard}>
           <Button
@@ -357,10 +420,24 @@ const createStyles = (Colors: ThemeColors) => StyleSheet.create({
     fontWeight: '700',
     marginBottom: 2,
   },
+  statusTitleSuccess: {
+    color: Colors.successText,
+  },
+  statusTitleDanger: {
+    color: Colors.dangerText,
+  },
+  statusTitleWarning: {
+    color: Colors.warningText,
+  },
   statusBoxSubtitle: {
     fontSize: 13,
     color: Colors.textSecondary,
     lineHeight: 18,
+  },
+  statusMeta: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginTop: 2,
   },
   fullImage: {
     width: '100%',
@@ -373,5 +450,22 @@ const createStyles = (Colors: ThemeColors) => StyleSheet.create({
     flexDirection: 'row',
     gap: Spacing.md,
     marginTop: Spacing.sm,
+  },
+  correctionCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.base,
+    marginBottom: Spacing.md,
+    ...Shadows.card,
+  },
+  correctionTitle: {
+    color: Colors.primary,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  correctionSubtitle: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    marginTop: Spacing.xs,
   },
 });

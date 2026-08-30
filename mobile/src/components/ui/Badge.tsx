@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
-import { Colors, BorderRadius, Spacing } from '../../../constants/theme';
+import { BorderRadius, Spacing } from '../../../constants/theme';
 import { TransactionStatus } from '../../types';
+import { useThemeColors } from '../../store/theme.store';
 
 export interface BadgeProps {
   label?: string;
@@ -18,6 +19,7 @@ export function Badge({
   style,
   textStyle,
 }: BadgeProps) {
+  const Colors = useThemeColors();
   let bgColor = Colors.surfaceSubtle;
   let textColor = Colors.textSecondary;
   let displayLabel = label;

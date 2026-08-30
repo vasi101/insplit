@@ -1,104 +1,86 @@
-import React, { useEffect, useMemo } from 'react';
-import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, ActivityIndicator, StyleSheet, Text, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../src/store/auth.store';
-import { ThemeColors } from '../constants/theme';
-import { useThemeColors } from '../src/store/theme.store';
 
 export default function Index() {
-  const Colors = useThemeColors();
-  const styles = useMemo(() => createStyles(Colors), [Colors]);
   const router = useRouter();
   const isInitialized = useAuthStore((state) => state.isInitialized);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   useEffect(() => {
     if (!isInitialized) return;
-
-    if (isAuthenticated) {
-      router.replace('/(tabs)/feed');
-    } else {
-      router.replace('/auth/login');
-    }
+    router.replace(isAuthenticated ? '/(tabs)/feed' : '/auth/login');
   }, [isInitialized, isAuthenticated, router]);
 
   return (
     <View style={styles.container}>
-      <View style={styles.glowTop} />
-      <View style={styles.glowBottom} />
-      <View style={styles.brandMark}>
-        <View style={styles.brandPanelLeft} />
-        <View style={styles.brandPanelRight} />
-        <Text style={styles.brandSymbol}>÷</Text>
+      <View style={styles.orbitLarge} />
+      <View style={styles.orbitSmall} />
+      <View style={styles.logoFrame}>
+        <Image
+          source={require('../assets/icon-insplit-balance.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
       </View>
       <Text style={styles.brandName}>Insplit</Text>
-      <Text style={styles.tagline}>Shared living, made simple.</Text>
-      <View style={styles.loadingRow}>
-        <ActivityIndicator size="small" color={Colors.primary} />
-        <Text style={styles.loadingText}>Preparing your space</Text>
-      </View>
+      <ActivityIndicator style={styles.loader} size="small" color="#8EA2FF" />
     </View>
   );
 }
 
-const createStyles = (Colors: ThemeColors) => StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#080D22',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  glowTop: {
+  orbitLarge: {
     position: 'absolute',
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    backgroundColor: Colors.primary,
-    opacity: 0.1,
-    top: -100,
-    right: -90,
+    width: 340,
+    height: 340,
+    borderRadius: 170,
+    borderWidth: 1,
+    borderColor: 'rgba(142,162,255,0.12)',
   },
-  glowBottom: {
+  orbitSmall: {
     position: 'absolute',
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: Colors.primaryLight,
-    opacity: 0.1,
-    bottom: -100,
-    left: -70,
+    width: 250,
+    height: 250,
+    borderRadius: 125,
+    borderWidth: 1,
+    borderColor: 'rgba(76,201,240,0.12)',
   },
-  brandMark: {
-    width: 78,
-    height: 78,
-    borderRadius: 24,
-    backgroundColor: Colors.primary,
+  logoFrame: {
+    width: 108,
+    height: 108,
+    borderRadius: 30,
+    backgroundColor: '#10165B',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 18,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
-    shadowRadius: 18,
-    elevation: 8,
+    marginBottom: 22,
+    shadowColor: '#4361EE',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.35,
+    shadowRadius: 22,
+    elevation: 10,
   },
-  brandPanelLeft: {
-    position: 'absolute', width: 22, height: 38, left: 15, top: 20,
-    borderRadius: 7, backgroundColor: 'rgba(255,255,255,0.22)',
+  logo: {
+    width: 100,
+    height: 100,
+    borderRadius: 27,
   },
-  brandPanelRight: {
-    position: 'absolute', width: 22, height: 38, right: 15, top: 20,
-    borderRadius: 7, backgroundColor: 'rgba(255,255,255,0.22)',
+  brandName: {
+    color: '#F8FAFC',
+    fontSize: 36,
+    fontWeight: '900',
+    letterSpacing: -1.2,
   },
-  brandSymbol: { color: '#FFFFFF', fontSize: 34, fontWeight: '900', zIndex: 2 },
-  brandName: { color: Colors.text, fontSize: 34, fontWeight: '900', letterSpacing: -1 },
-  tagline: { color: Colors.textSecondary, fontSize: 14, marginTop: 5 },
-  loadingRow: {
+  loader: {
     position: 'absolute',
     bottom: 62,
-    flexDirection: 'row',
-    alignItems: 'center',
   },
-  loadingText: { color: Colors.textMuted, fontSize: 12, marginLeft: 9, fontWeight: '600' },
 });

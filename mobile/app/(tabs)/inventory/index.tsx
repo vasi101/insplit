@@ -20,6 +20,7 @@ import { Spacing, BorderRadius, Shadows, ThemeColors } from '../../../constants/
 import { useThemeColors } from '../../../src/store/theme.store';
 import { useRoomStore } from '../../../src/store/room.store';
 import { useInventoryStore } from '../../../src/store/inventory.store';
+import { useAuthStore } from '../../../src/store/auth.store';
 import { InventoryCategory, InventoryUnit, InventoryItem } from '../../../src/types';
 import { EmptyState } from '../../../src/components/ui/EmptyState';
 
@@ -78,16 +79,23 @@ function InventoryItemCard({
   styles,
   onEdit,
   onDelete,
-  onAdjust,
+  onApprove,
+  onReject,
+  currentUserId,
 }: {
   item: InventoryItem;
   Colors: ThemeColors;
   styles: ReturnType<typeof createStyles>;
   onEdit: (item: InventoryItem) => void;
   onDelete: (item: InventoryItem) => void;
-  onAdjust: (item: InventoryItem, delta: number) => void;
+  onApprove: (item: InventoryItem) => void;
+  onReject: (item: InventoryItem) => void;
+  currentUserId?: string;
 }) {
   const isLow = item.minQuantity != null && item.quantity <= item.minQuantity;
+  const creator = typeof item.addedBy === 'object' ? item.addedBy : null;
+  const isCreator = creator?._id === currentUserId || item.addedBy === currentUserId;
+  const status = item.status || 'VERIFIED';
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
@@ -106,8 +114,8 @@ function InventoryItemCard({
         onLongPress={() => onEdit(item)}
         style={[styles.itemCard, isLow && styles.itemCardLow]}
       >
-        {/* Left: emoji + name */}
-        <View style={styles.itemLeft}>
+        <View style={styles.itemCardHeader}>
+          <View style={styles.itemLeft}>
           <View style={[styles.itemEmojiWrap, isLow && styles.itemEmojiWrapLow]}>
             <Text style={styles.itemEmoji}>{CATEGORY_ICONS[item.category]}</Text>
           </View>
@@ -124,39 +132,50 @@ function InventoryItemCard({
                 </View>
               )}
             </View>
+            <Text style={styles.addedByText}>Added by {creator?.name || 'Room member'}</Text>
+          </View>
+        </View>
+          <View style={[
+            styles.statusBadge,
+            status === 'VERIFIED' ? styles.statusVerified : status === 'REJECTED' ? styles.statusRejected : styles.statusPending,
+          ]}>
+            <Text style={styles.statusText}>{status}</Text>
           </View>
         </View>
 
-        {/* Right: quantity controls */}
-        <View style={styles.itemRight}>
-          <TouchableOpacity
-            style={styles.adjustBtn}
-            onPress={() => onAdjust(item, -1)}
-            hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-          >
-            <Ionicons name="remove" size={16} color={Colors.textSecondary} />
-          </TouchableOpacity>
-
-          <View style={styles.qtyBox}>
-            <Text style={styles.qtyValue}>{item.quantity}</Text>
-            <Text style={styles.qtyUnit}>{UNIT_LABELS[item.unit]}</Text>
+        <View style={styles.stockSummary}>
+          <View>
+            <Text style={styles.stockLabel}>CURRENT STOCK</Text>
+            <Text style={styles.stockValue}>{item.quantity} <Text style={styles.stockUnit}>{UNIT_LABELS[item.unit]}</Text></Text>
           </View>
+          <View style={styles.thresholdBlock}>
+            <Text style={styles.stockLabel}>LOW-STOCK ALERT</Text>
+            <Text style={styles.thresholdValue}>
+              {item.minQuantity == null ? 'Not set' : `Below ${item.minQuantity} ${UNIT_LABELS[item.unit]}`}
+            </Text>
+          </View>
+        </View>
 
+        <View style={styles.cardActions}>
+          {isCreator && (
           <TouchableOpacity
-            style={styles.adjustBtn}
-            onPress={() => onAdjust(item, 1)}
-            hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-          >
-            <Ionicons name="add" size={16} color={Colors.primary} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.menuBtn}
+            style={styles.editAction}
             onPress={() => onEdit(item)}
-            hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
           >
-            <Ionicons name="ellipsis-vertical" size={16} color={Colors.textMuted} />
+            <Ionicons name="create-outline" size={17} color={Colors.primary} />
+            <Text style={styles.editActionText}>Edit item</Text>
           </TouchableOpacity>
+          )}
+          {!isCreator && status === 'PENDING' && (
+            <>
+              <TouchableOpacity style={styles.rejectAction} onPress={() => onReject(item)}>
+                <Text style={styles.rejectActionText}>Reject</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.approveAction} onPress={() => onApprove(item)}>
+                <Text style={styles.approveActionText}>Approve</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       </TouchableOpacity>
     </Animated.View>
@@ -337,7 +356,8 @@ export default function InventoryScreen() {
   const styles = useMemo(() => createStyles(Colors), [Colors]);
 
   const { currentRoom } = useRoomStore();
-  const { items, isLoading, fetchItems, addItem, updateItem, deleteItem } = useInventoryStore();
+  const user = useAuthStore((state) => state.user);
+  const { items, isLoading, fetchItems, addItem, updateItem, deleteItem, approveItem, rejectItem } = useInventoryStore();
 
   const [activeCategory, setActiveCategory] = useState<InventoryCategory | 'ALL'>('ALL');
   const [modalVisible, setModalVisible] = useState(false);
@@ -456,13 +476,30 @@ export default function InventoryScreen() {
     );
   };
 
-  const handleAdjust = useCallback(
-    async (item: InventoryItem, delta: number) => {
-      const newQty = Math.max(0, item.quantity + delta);
-      await updateItem(item._id, { quantity: newQty });
-    },
-    [updateItem]
-  );
+  const handleApprove = async (item: InventoryItem) => {
+    try {
+      await approveItem(item._id);
+    } catch (error) {
+      Alert.alert('Could not approve', error instanceof Error ? error.message : 'Approval failed.');
+    }
+  };
+
+  const handleReject = (item: InventoryItem) => {
+    Alert.alert('Reject inventory item?', `Reject "${item.name}"?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Reject',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await rejectItem(item._id);
+          } catch (error) {
+            Alert.alert('Could not reject', error instanceof Error ? error.message : 'Rejection failed.');
+          }
+        },
+      },
+    ]);
+  };
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -472,7 +509,6 @@ export default function InventoryScreen() {
         <EmptyState
           icon={<Text style={{ fontSize: 48 }}>🏠</Text>}
           title="No Room Selected"
-          description="Join or create a room first to manage your shared inventory."
         />
       </SafeAreaView>
     );
@@ -554,11 +590,6 @@ export default function InventoryScreen() {
             <EmptyState
               icon={<Text style={{ fontSize: 48 }}>📦</Text>}
               title={activeCategory === 'ALL' ? 'No Items Yet' : `No ${CATEGORIES.find(c => c.key === activeCategory)?.label} Items`}
-              description={
-                activeCategory === 'ALL'
-                  ? 'Tap the + button to add your first inventory item.'
-                  : 'No items in this category. Tap + to add one.'
-              }
             />
           ) : groupedItems ? (
             // Grouped view (ALL category)
@@ -581,7 +612,9 @@ export default function InventoryScreen() {
                     styles={styles}
                     onEdit={handleOpenEdit}
                     onDelete={handleDelete}
-                    onAdjust={handleAdjust}
+                    onApprove={handleApprove}
+                    onReject={handleReject}
+                    currentUserId={user?._id}
                   />
                 ))}
               </View>
@@ -596,7 +629,9 @@ export default function InventoryScreen() {
                 styles={styles}
                 onEdit={handleOpenEdit}
                 onDelete={handleDelete}
-                onAdjust={handleAdjust}
+                onApprove={handleApprove}
+                onReject={handleReject}
+                currentUserId={user?._id}
               />
             ))
           )}
@@ -775,22 +810,31 @@ const createStyles = (Colors: ThemeColors) =>
 
     // ── Item Card ─────────────────────────────────────────────────────────────
     itemCard: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      width: '100%',
+      flexDirection: 'column',
+      alignItems: 'stretch',
       backgroundColor: Colors.surface,
       borderRadius: BorderRadius.lg,
       padding: Spacing.md,
       marginBottom: Spacing.sm,
       borderWidth: 1,
       borderColor: Colors.border,
+      overflow: 'hidden',
       ...Shadows.card,
     },
     itemCardLow: {
       borderColor: Colors.warning,
       borderWidth: 1.5,
     },
+    itemCardHeader: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      width: '100%',
+    },
     itemLeft: {
       flex: 1,
+      minWidth: 0,
       flexDirection: 'row',
       alignItems: 'center',
       gap: Spacing.md,
@@ -811,11 +855,13 @@ const createStyles = (Colors: ThemeColors) =>
     },
     itemInfo: {
       flex: 1,
+      minWidth: 0,
     },
     itemName: {
       fontSize: 15,
       fontWeight: '600',
       color: Colors.text,
+      flexShrink: 1,
     },
     itemMeta: {
       flexDirection: 'row',
@@ -826,6 +872,123 @@ const createStyles = (Colors: ThemeColors) =>
     itemCategoryLabel: {
       fontSize: 12,
       color: Colors.textMuted,
+    },
+    addedByText: {
+      fontSize: 11,
+      color: Colors.textMuted,
+      marginTop: 3,
+    },
+    statusBadge: {
+      borderRadius: BorderRadius.full,
+      paddingHorizontal: Spacing.sm,
+      paddingVertical: 4,
+      marginLeft: Spacing.sm,
+      flexShrink: 0,
+    },
+    statusPending: {
+      backgroundColor: Colors.warningLight,
+    },
+    statusVerified: {
+      backgroundColor: Colors.successLight,
+    },
+    statusRejected: {
+      backgroundColor: Colors.dangerLight,
+    },
+    statusText: {
+      color: Colors.text,
+      fontSize: 10,
+      fontWeight: '800',
+    },
+    stockSummary: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-end',
+      borderTopWidth: 1,
+      borderBottomWidth: 1,
+      borderColor: Colors.borderLight,
+      marginTop: Spacing.md,
+      paddingVertical: Spacing.md,
+      width: '100%',
+    },
+    stockLabel: {
+      color: Colors.textMuted,
+      fontSize: 10,
+      fontWeight: '700',
+      letterSpacing: 0.5,
+    },
+    stockValue: {
+      color: Colors.primary,
+      fontSize: 24,
+      fontWeight: '800',
+      marginTop: 2,
+    },
+    stockUnit: {
+      color: Colors.textSecondary,
+      fontSize: 13,
+      fontWeight: '500',
+    },
+    thresholdBlock: {
+      flex: 1,
+      alignItems: 'flex-end',
+      marginLeft: Spacing.md,
+    },
+    thresholdValue: {
+      color: Colors.textSecondary,
+      fontSize: 13,
+      fontWeight: '600',
+      marginTop: 4,
+      textAlign: 'right',
+      flexShrink: 1,
+    },
+    cardActions: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      gap: Spacing.sm,
+      marginTop: Spacing.md,
+      width: '100%',
+      flexWrap: 'wrap',
+    },
+    editAction: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.xs,
+      borderWidth: 1,
+      borderColor: Colors.primary,
+      borderRadius: BorderRadius.md,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.sm,
+    },
+    editActionText: {
+      color: Colors.primary,
+      fontSize: 13,
+      fontWeight: '700',
+    },
+    rejectAction: {
+      flex: 1,
+      borderWidth: 1,
+      borderColor: Colors.danger,
+      borderRadius: BorderRadius.md,
+      paddingHorizontal: Spacing.base,
+      paddingVertical: Spacing.sm,
+    },
+    rejectActionText: {
+      color: Colors.danger,
+      fontSize: 13,
+      fontWeight: '700',
+      textAlign: 'center',
+    },
+    approveAction: {
+      flex: 1,
+      backgroundColor: Colors.success,
+      borderRadius: BorderRadius.md,
+      paddingHorizontal: Spacing.base,
+      paddingVertical: Spacing.sm,
+    },
+    approveActionText: {
+      color: Colors.textInverted,
+      fontSize: 13,
+      fontWeight: '700',
+      textAlign: 'center',
     },
     lowBadge: {
       flexDirection: 'row',

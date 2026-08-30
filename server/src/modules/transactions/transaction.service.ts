@@ -28,6 +28,30 @@ export interface ListTransactionsQuery {
   limit?: number;
 }
 
+const EXPENSE_CORRECTION_WINDOW_MS = 30_000;
+
+function assertWithinCorrectionWindow(transaction: ITransaction): void {
+  const elapsed = Date.now() - transaction.createdAt.getTime();
+  if (elapsed >= EXPENSE_CORRECTION_WINDOW_MS) {
+    throw createError(
+      'The 30-second edit and delete window has expired',
+      409,
+      'CORRECTION_WINDOW_EXPIRED'
+    );
+  }
+}
+
+function assertCorrectionWindowClosed(transaction: ITransaction): void {
+  const remainingMs = transaction.createdAt.getTime() + EXPENSE_CORRECTION_WINDOW_MS - Date.now();
+  if (remainingMs > 0) {
+    throw createError(
+      `This expense can be reviewed in ${Math.ceil(remainingMs / 1000)} seconds`,
+      409,
+      'CORRECTION_WINDOW_ACTIVE'
+    );
+  }
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 async function assertRoomMember(roomId: string, userId: string) {
@@ -41,17 +65,35 @@ async function assertRoomMember(roomId: string, userId: string) {
 }
 
 async function getRoomMemberPushTokens(roomId: string, excludeUserId: string): Promise<string[]> {
-  const room = await Room.findById(roomId).populate<{ 'members.userId': { pushToken?: string } }>('members.userId', 'pushToken');
+  const room = await Room.findById(roomId).select('members');
   if (!room) return [];
 
-  const tokens: string[] = [];
-  for (const member of room.members) {
-    if (member.userId.toString() === excludeUserId) continue;
-    if (member.status !== 'ACTIVE') continue;
-    const user = await User.findById(member.userId).select('pushToken');
-    if (user?.pushToken) tokens.push(user.pushToken);
-  }
-  return tokens;
+  const memberIds = room.members
+    .filter(
+      (member) =>
+        member.status === 'ACTIVE' && member.userId.toString() !== excludeUserId
+    )
+    .map((member) => member.userId);
+
+  if (memberIds.length === 0) return [];
+
+  const users = await User.find({ _id: { $in: memberIds } }).select('pushToken').lean();
+  return users.flatMap((user) => (user.pushToken ? [user.pushToken] : []));
+}
+
+async function notifyTransactionCreated(
+  transaction: ITransaction,
+  input: CreateTransactionInput
+): Promise<void> {
+  const pushTokens = await getRoomMemberPushTokens(input.roomId, input.createdBy);
+  const creator = await User.findById(input.createdBy).select('name').lean();
+  if (pushTokens.length === 0 || !creator) return;
+
+  await sendPushNotifications(pushTokens, {
+    title: 'New Expense Requires Verification',
+    body: `${creator.name} added ${input.currency ?? 'NPR'} ${input.amount} for ${input.title}. Tap to review.`,
+    data: { type: 'TRANSACTION_PENDING', transactionId: transaction._id.toString() },
+  });
 }
 
 // ─── Service Functions ────────────────────────────────────────────────────────
@@ -90,15 +132,10 @@ export async function createTransaction(input: CreateTransactionInput): Promise<
   emitToRoom(input.roomId, 'transaction:created', { transaction: populated });
 
   // Send push notifications to other members (Rule 8: only after successful save)
-  const pushTokens = await getRoomMemberPushTokens(input.roomId, input.createdBy);
-  const creator = await User.findById(input.createdBy).select('name');
-  if (pushTokens.length > 0 && creator) {
-    sendPushNotifications(pushTokens, {
-      title: 'New Expense Requires Verification',
-      body: `${creator.name} added ${input.currency ?? 'NPR'} ${input.amount} for ${input.title}. Tap to review.`,
-      data: { type: 'TRANSACTION_PENDING', transactionId: transaction._id.toString() },
-    }).catch(console.error); // Non-blocking
-  }
+  // Notification failures must not turn an already-saved expense into a 500.
+  void notifyTransactionCreated(transaction, input).catch((error) => {
+    console.error('Failed to notify room members about new expense:', error);
+  });
 
   return populated;
 }
@@ -116,7 +153,8 @@ export async function listTransactions(query: ListTransactionsQuery): Promise<{
   const skip = (page - 1) * limit;
 
   const filter: Record<string, unknown> = { roomId: query.roomId };
-  if (query.status) filter.status = query.status;
+  // The default feed excludes rejected entries; the REJECTED tab requests them explicitly.
+  filter.status = query.status || { $ne: 'REJECTED' };
 
   const [transactions, total] = await Promise.all([
     Transaction.find(filter)
@@ -159,6 +197,9 @@ export async function approveTransaction(transactionId: string, verifierId: stri
   if (transaction.status !== 'PENDING') {
     throw createError(`Transaction is already ${transaction.status}`, 409, 'ALREADY_PROCESSED');
   }
+
+  // Give the creator the full correction window before another member can decide.
+  assertCorrectionWindowClosed(transaction);
 
   transaction.status = 'VERIFIED';
   transaction.verification = {
@@ -209,6 +250,8 @@ export async function rejectTransaction(
     throw createError(`Transaction is already ${transaction.status}`, 409, 'ALREADY_PROCESSED');
   }
 
+  assertCorrectionWindowClosed(transaction);
+
   transaction.status = 'REJECTED';
   transaction.verification = {
     verifiedBy: new mongoose.Types.ObjectId(verifierId),
@@ -258,6 +301,8 @@ export async function updateTransaction(
     throw createError('Only pending transactions can be edited', 409, 'NOT_EDITABLE');
   }
 
+  assertWithinCorrectionWindow(transaction);
+
   const allowedUpdates = ['title', 'description', 'amount', 'category', 'paidBy', 'expenseDate', 'images'];
   for (const key of allowedUpdates) {
     if (updates[key as keyof CreateTransactionInput] !== undefined) {
@@ -266,10 +311,31 @@ export async function updateTransaction(
   }
 
   await transaction.save();
-  return transaction.populate([
+  const populated = await transaction.populate([
     { path: 'createdBy', select: 'name email profileImage' },
     { path: 'paidBy', select: 'name email profileImage' },
   ]);
+  emitToRoom(transaction.roomId.toString(), 'transaction:updated', { transaction: populated });
+  return populated;
+}
+
+export async function deleteTransaction(transactionId: string, userId: string): Promise<void> {
+  const transaction = await Transaction.findById(transactionId);
+  if (!transaction) throw createError('Transaction not found', 404, 'NOT_FOUND');
+
+  if (transaction.createdBy.toString() !== userId) {
+    throw createError('Only the creator can delete this transaction', 403, 'FORBIDDEN');
+  }
+
+  if (transaction.status !== 'PENDING') {
+    throw createError('Only pending transactions can be deleted', 409, 'NOT_DELETABLE');
+  }
+
+  assertWithinCorrectionWindow(transaction);
+  await transaction.deleteOne();
+  emitToRoom(transaction.roomId.toString(), 'transaction:deleted', {
+    transactionId: transaction._id.toString(),
+  });
 }
 
 export async function voidTransaction(transactionId: string, userId: string): Promise<ITransaction> {

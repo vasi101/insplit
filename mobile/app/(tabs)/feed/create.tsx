@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../../../src/store/auth.store';
 import { useRoomStore } from '../../../src/store/room.store';
@@ -40,6 +40,7 @@ export default function CreateExpenseScreen() {
   const Colors = useThemeColors();
   const styles = useMemo(() => createStyles(Colors), [Colors]);
   const router = useRouter();
+  const { editId } = useLocalSearchParams<{ editId?: string }>();
   const user = useAuthStore((state) => state.user);
   const currentRoom = useRoomStore((state) => state.currentRoom);
   const members = useRoomStore((state) => state.members);
@@ -52,8 +53,29 @@ export default function CreateExpenseScreen() {
   const [description, setDescription] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingExpense, setIsLoadingExpense] = useState(Boolean(editId));
+  const [existingImages, setExistingImages] = useState<string[]>([]);
   const [errors, setErrors] = useState<{ title?: string; amount?: string }>({});
   const [notice, setNotice] = useState<{ title: string; message: string; kind: 'success' | 'error' | 'warning'; closeScreen?: boolean } | null>(null);
+
+  useEffect(() => {
+    if (!editId) return;
+
+    import('../../../src/services/api/transactions.api')
+      .then(({ getTransactionById }) => getTransactionById(editId))
+      .then((transaction) => {
+        setTitle(transaction.title);
+        setAmount(String(transaction.amount));
+        setCategory(transaction.category);
+        setPaidBy(transaction.paidBy._id);
+        setDescription(transaction.description || '');
+        setExistingImages(transaction.images || []);
+      })
+      .catch((error) => {
+        setNotice({ title: 'Could not edit expense', message: extractErrorMessage(error), kind: 'error', closeScreen: true });
+      })
+      .finally(() => setIsLoadingExpense(false));
+  }, [editId]);
 
   const pickImage = async () => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -125,7 +147,7 @@ export default function CreateExpenseScreen() {
         }
       }
 
-      await createTx({
+      const payload = {
         roomId: currentRoom._id,
         title: title.trim(),
         amount: parseFloat(amount),
@@ -134,10 +156,22 @@ export default function CreateExpenseScreen() {
         paidBy: paidBy || user!._id,
         expenseDate: new Date().toISOString(),
         description: description.trim() || undefined,
-        images: uploadedUrls,
-      });
+        images: uploadedUrls.length > 0 ? uploadedUrls : existingImages,
+      };
 
-      setNotice({ title: 'Expense created', message: 'Waiting for verification.', kind: 'success', closeScreen: true });
+      if (editId) {
+        const { updateTransaction } = await import('../../../src/services/api/transactions.api');
+        await updateTransaction(editId, payload);
+        setNotice({
+          title: 'Expense updated',
+          message: 'Your correction was saved.',
+          kind: 'success',
+          closeScreen: true,
+        });
+      } else {
+        const created = await createTx(payload);
+        router.replace(`/(tabs)/feed/${created._id}`);
+      }
     } catch (err: unknown) {
       setNotice({ title: 'Could not create expense', message: extractErrorMessage(err), kind: 'error' });
     } finally {
@@ -151,6 +185,10 @@ export default function CreateExpenseScreen() {
       style={styles.container}
     >
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        {isLoadingExpense ? (
+          <ActivityIndicator size="large" color={Colors.primary} />
+        ) : (
+        <>
         {/* Title & Amount */}
         <Input
           label="Expense Title"
@@ -261,12 +299,14 @@ export default function CreateExpenseScreen() {
 
         {/* Submit Button */}
         <Button
-          title="Submit for Verification"
+          title={editId ? 'Save Correction' : 'Submit for Verification'}
           onPress={handleSubmit}
           loading={isSubmitting}
           size="lg"
           style={styles.submitBtn}
         />
+        </>
+        )}
       </ScrollView>
       <NoticeModal
         visible={Boolean(notice)}

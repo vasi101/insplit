@@ -71,6 +71,15 @@ export async function updateTransaction(req: Request, res: Response, next: NextF
   }
 }
 
+export async function deleteTransaction(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    await txService.deleteTransaction(req.params.transactionId, req.user!.userId);
+    res.status(200).json(successResponse({}, 'Transaction deleted'));
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function approveTransaction(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const transaction = await txService.approveTransaction(req.params.transactionId, req.user!.userId);
