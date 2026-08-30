@@ -1,0 +1,9 @@
+{
+  "name": "insplit-workspace",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "build": "cd web && npm install && npm run build",
+    "build:web": "cd web && npm install && npm run build"
+  }
+}
