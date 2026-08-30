@@ -1,4 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { clientCache } from '../utils/cache';
 import {
   User,
   DashboardStats,
@@ -155,8 +156,15 @@ export async function getMe() {
 
 // Analytics
 export async function fetchDashboardStats() {
-  const res = await api.get<ApiResponse<DashboardStats>>('/admin/stats');
-  return res.data.data!;
+  const CACHE_KEY = 'stats';
+  const cached = clientCache.get<DashboardStats>(CACHE_KEY, 30_000);
+  if (cached && !cached.isStale) return cached.data;
+  // Serve stale data immediately while re-fetching
+  const promise = api.get<ApiResponse<DashboardStats>>('/admin/stats').then((res) => {
+    clientCache.set(CACHE_KEY, res.data.data!);
+    return res.data.data!;
+  });
+  return cached ? cached.data : promise;
 }
 
 // Users
@@ -167,11 +175,17 @@ export async function fetchUsers(params: {
   page?: number;
   limit?: number;
 }) {
-  const res = await api.get<ApiResponse<{ users: User[]; total: number; page: number; pages: number }>>(
+  const CACHE_KEY = `users:${JSON.stringify(params)}`;
+  const cached = clientCache.get<{ users: User[]; total: number; page: number; pages: number }>(CACHE_KEY, 30_000);
+  if (cached && !cached.isStale) return cached.data;
+  const promise = api.get<ApiResponse<{ users: User[]; total: number; page: number; pages: number }>>(
     '/admin/users',
     { params }
-  );
-  return res.data.data!;
+  ).then((res) => {
+    clientCache.set(CACHE_KEY, res.data.data!);
+    return res.data.data!;
+  });
+  return cached ? cached.data : promise;
 }
 
 export async function fetchUserDetails(userId: string) {
@@ -183,30 +197,39 @@ export async function fetchUserDetails(userId: string) {
 
 export async function createNewUser(data: { name: string; email: string; password?: string; phone?: string; isAdmin?: boolean }) {
   const res = await api.post<ApiResponse<{ user: User }>>('/admin/users', data);
+  clientCache.deletePrefix('users:');
+  clientCache.deletePrefix('stats');
   return res.data.data!.user;
 }
 
 export async function updateUserDetails(userId: string, data: Partial<User>) {
   const res = await api.patch<ApiResponse<{ user: User }>>(`/admin/users/${userId}`, data);
+  clientCache.deletePrefix('users:');
+  clientCache.deletePrefix('stats');
   return res.data.data!.user;
 }
 
 export async function deleteUser(userId: string) {
   await api.delete(`/admin/users/${userId}`);
+  clientCache.deletePrefix('users:');
+  clientCache.deletePrefix('stats');
 }
 
 export async function toggleAdminRole(userId: string, isAdmin: boolean) {
   const res = await api.patch<ApiResponse<{ user: User }>>(`/admin/users/${userId}/role`, { isAdmin });
+  clientCache.deletePrefix('users:');
   return res.data.data!.user;
 }
 
 export async function sendUserVerificationEmail(userId: string) {
   const res = await api.post<ApiResponse<{ email: string }>>(`/admin/users/${userId}/send-verification`);
+  clientCache.deletePrefix('users:');
   return res.data;
 }
 
 export async function toggleUserVerification(userId: string, emailVerified: boolean) {
   const res = await api.patch<ApiResponse<{ user: User }>>(`/admin/users/${userId}/verification`, { emailVerified });
+  clientCache.deletePrefix('users:');
   return res.data.data!.user;
 }
 
@@ -219,15 +242,23 @@ export async function fetchTransactions(params: {
   page?: number;
   limit?: number;
 }) {
-  const res = await api.get<ApiResponse<{ transactions: Transaction[]; total: number; page: number; pages: number }>>(
+  const CACHE_KEY = `transactions:${JSON.stringify(params)}`;
+  const cached = clientCache.get<{ transactions: Transaction[]; total: number; page: number; pages: number }>(CACHE_KEY, 20_000);
+  if (cached && !cached.isStale) return cached.data;
+  const promise = api.get<ApiResponse<{ transactions: Transaction[]; total: number; page: number; pages: number }>>(
     '/admin/transactions',
     { params }
-  );
-  return res.data.data!;
+  ).then((res) => {
+    clientCache.set(CACHE_KEY, res.data.data!);
+    return res.data.data!;
+  });
+  return cached ? cached.data : promise;
 }
 
 export async function createTransaction(data: any) {
   const res = await api.post<ApiResponse<{ transaction: Transaction }>>('/admin/transactions', data);
+  clientCache.deletePrefix('transactions:');
+  clientCache.deletePrefix('stats');
   return res.data.data!.transaction;
 }
 
@@ -236,29 +267,43 @@ export async function updateTransactionStatus(transactionId: string, status: str
     `/admin/transactions/${transactionId}/status`,
     { status }
   );
+  clientCache.deletePrefix('transactions:');
+  clientCache.deletePrefix('stats');
   return res.data.data!.transaction;
 }
 
 export async function deleteTransaction(transactionId: string) {
   await api.delete(`/admin/transactions/${transactionId}`);
+  clientCache.deletePrefix('transactions:');
+  clientCache.deletePrefix('stats');
 }
 
 // Rooms
 export async function fetchRooms(params: { search?: string; page?: number; limit?: number }) {
-  const res = await api.get<ApiResponse<{ rooms: Room[]; total: number; page: number; pages: number }>>(
+  const CACHE_KEY = `rooms:${JSON.stringify(params)}`;
+  const cached = clientCache.get<{ rooms: Room[]; total: number; page: number; pages: number }>(CACHE_KEY, 30_000);
+  if (cached && !cached.isStale) return cached.data;
+  const promise = api.get<ApiResponse<{ rooms: Room[]; total: number; page: number; pages: number }>>(
     '/admin/rooms',
     { params }
-  );
-  return res.data.data!;
+  ).then((res) => {
+    clientCache.set(CACHE_KEY, res.data.data!);
+    return res.data.data!;
+  });
+  return cached ? cached.data : promise;
 }
 
 export async function createRoom(data: { name: string; description?: string; creatorId?: string }) {
   const res = await api.post<ApiResponse<{ room: Room }>>('/admin/rooms', data);
+  clientCache.deletePrefix('rooms:');
+  clientCache.deletePrefix('stats');
   return res.data.data!.room;
 }
 
 export async function deleteRoom(roomId: string) {
   await api.delete(`/admin/rooms/${roomId}`);
+  clientCache.deletePrefix('rooms:');
+  clientCache.deletePrefix('stats');
 }
 
 // Inventory
@@ -269,11 +314,17 @@ export async function fetchInventory(params: {
   page?: number;
   limit?: number;
 }) {
-  const res = await api.get<ApiResponse<{ items: InventoryItem[]; total: number; page: number; pages: number }>>(
+  const CACHE_KEY = `inventory:${JSON.stringify(params)}`;
+  const cached = clientCache.get<{ items: InventoryItem[]; total: number; page: number; pages: number }>(CACHE_KEY, 20_000);
+  if (cached && !cached.isStale) return cached.data;
+  const promise = api.get<ApiResponse<{ items: InventoryItem[]; total: number; page: number; pages: number }>>(
     '/admin/inventory',
     { params }
-  );
-  return res.data.data!;
+  ).then((res) => {
+    clientCache.set(CACHE_KEY, res.data.data!);
+    return res.data.data!;
+  });
+  return cached ? cached.data : promise;
 }
 
 export async function addInventoryItem(data: {
@@ -285,11 +336,14 @@ export async function addInventoryItem(data: {
   minQuantity?: number | null;
 }) {
   const res = await api.post<ApiResponse<{ item: InventoryItem }>>('/admin/inventory', data);
+  clientCache.deletePrefix('inventory:');
+  clientCache.deletePrefix('stats');
   return res.data.data!.item;
 }
 
 export async function updateInventoryItem(itemId: string, data: Partial<InventoryItem>) {
   const res = await api.patch<ApiResponse<{ item: InventoryItem }>>(`/admin/inventory/${itemId}`, data);
+  clientCache.deletePrefix('inventory:');
   return res.data.data!.item;
 }
 

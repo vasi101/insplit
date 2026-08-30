@@ -1,5 +1,7 @@
 import { create } from 'zustand';
-import { Transaction, TransactionStatus } from '../types';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Transaction } from '../types';
 import * as txApi from '../services/api/transactions.api';
 import { extractErrorMessage } from '../services/api/client';
 import { registerSocketHandlers } from '../services/socket/socket.service';
@@ -26,123 +28,137 @@ interface FeedState {
   clearError: () => void;
 }
 
-export const useFeedStore = create<FeedState>((set, get) => {
-  // Register socket listeners once
-  registerSocketHandlers({
-    onTransactionCreated: (transaction) => {
-      get().updateTransactionLocally(transaction);
-    },
-    onTransactionApproved: (transaction) => {
-      get().updateTransactionLocally(transaction);
-    },
-    onTransactionRejected: (transaction) => {
-      get().updateTransactionLocally(transaction);
-    },
-    onTransactionUpdated: (transaction) => {
-      get().updateTransactionLocally(transaction);
-    },
-    onTransactionDeleted: (transactionId) => {
-      set((state) => ({
-        transactions: state.transactions.filter((t) => t._id !== transactionId),
-      }));
-    },
-  });
-
-  return {
-    transactions: [],
-    filter: 'ALL',
-    isLoading: false,
-    isRefreshing: false,
-    page: 1,
-    totalPages: 1,
-    total: 0,
-    error: null,
-
-    fetchFeed: async (roomId: string, page = 1, isRefresh = false) => {
-      if (!roomId) return;
-      const { filter } = get();
-
-      if (isRefresh) {
-        set({ isRefreshing: true, error: null });
-      } else if (page === 1) {
-        set({ isLoading: true, error: null });
-      }
-
-      try {
-        const statusParam = filter === 'ALL' ? undefined : filter;
-        const res = await txApi.listTransactions({
-          roomId,
-          status: statusParam,
-          page,
-          limit: 20,
-        });
-
-        set((state) => ({
-          transactions: page === 1 ? res.transactions : [...state.transactions, ...res.transactions],
-          page: res.page,
-          totalPages: res.pages,
-          total: res.total,
-          isLoading: false,
-          isRefreshing: false,
-        }));
-      } catch (err) {
-        const message = extractErrorMessage(err);
-        set({ error: message, isLoading: false, isRefreshing: false });
-      }
-    },
-
-    setFilter: (filter: FeedFilter, roomId: string) => {
-      set({ filter });
-      get().fetchFeed(roomId, 1);
-    },
-
-    createTransaction: async (payload) => {
-      try {
-        const tx = await txApi.createTransaction(payload);
-        get().updateTransactionLocally(tx);
-        return tx;
-      } catch (err) {
-        const message = extractErrorMessage(err);
-        set({ error: message });
-        throw new Error(message);
-      }
-    },
-
-    approveTransaction: async (transactionId: string) => {
-      try {
-        const updated = await txApi.approveTransaction(transactionId);
-        get().updateTransactionLocally(updated);
-      } catch (err) {
-        const message = extractErrorMessage(err);
-        set({ error: message });
-        throw new Error(message);
-      }
-    },
-
-    rejectTransaction: async (transactionId: string, reason?: string) => {
-      try {
-        const updated = await txApi.rejectTransaction(transactionId, reason);
-        get().updateTransactionLocally(updated);
-      } catch (err) {
-        const message = extractErrorMessage(err);
-        set({ error: message });
-        throw new Error(message);
-      }
-    },
-
-    updateTransactionLocally: (transaction: Transaction) => {
-      set((state) => {
-        const index = state.transactions.findIndex((t) => t._id === transaction._id);
-        if (index >= 0) {
-          const updated = [...state.transactions];
-          updated[index] = transaction;
-          return { transactions: updated };
-        } else {
-          return { transactions: [transaction, ...state.transactions] };
-        }
+export const useFeedStore = create<FeedState>()(
+  persist(
+    (set, get) => {
+      // Register socket listeners once at store creation
+      registerSocketHandlers({
+        onTransactionCreated: (transaction) => {
+          get().updateTransactionLocally(transaction);
+        },
+        onTransactionApproved: (transaction) => {
+          get().updateTransactionLocally(transaction);
+        },
+        onTransactionRejected: (transaction) => {
+          get().updateTransactionLocally(transaction);
+        },
+        onTransactionUpdated: (transaction) => {
+          get().updateTransactionLocally(transaction);
+        },
+        onTransactionDeleted: (transactionId) => {
+          set((state) => ({
+            transactions: state.transactions.filter((t) => t._id !== transactionId),
+          }));
+        },
       });
-    },
 
-    clearError: () => set({ error: null }),
-  };
-});
+      return {
+        // Persisted transactions rehydrated instantly from AsyncStorage on launch
+        transactions: [],
+        filter: 'ALL',
+        isLoading: false,
+        isRefreshing: false,
+        page: 1,
+        totalPages: 1,
+        total: 0,
+        error: null,
+
+        fetchFeed: async (roomId: string, page = 1, isRefresh = false) => {
+          if (!roomId) return;
+          const { filter } = get();
+
+          if (isRefresh) {
+            set({ isRefreshing: true, error: null });
+          } else if (page === 1) {
+            set({ isLoading: true, error: null });
+          }
+
+          try {
+            const statusParam = filter === 'ALL' ? undefined : filter;
+            const res = await txApi.listTransactions({
+              roomId,
+              status: statusParam,
+              page,
+              limit: 20,
+            });
+
+            set((state) => ({
+              transactions: page === 1 ? res.transactions : [...state.transactions, ...res.transactions],
+              page: res.page,
+              totalPages: res.pages,
+              total: res.total,
+              isLoading: false,
+              isRefreshing: false,
+            }));
+          } catch (err) {
+            const message = extractErrorMessage(err);
+            set({ error: message, isLoading: false, isRefreshing: false });
+          }
+        },
+
+        setFilter: (filter: FeedFilter, roomId: string) => {
+          set({ filter });
+          get().fetchFeed(roomId, 1);
+        },
+
+        createTransaction: async (payload) => {
+          try {
+            const tx = await txApi.createTransaction(payload);
+            get().updateTransactionLocally(tx);
+            return tx;
+          } catch (err) {
+            const message = extractErrorMessage(err);
+            set({ error: message });
+            throw new Error(message);
+          }
+        },
+
+        approveTransaction: async (transactionId: string) => {
+          try {
+            const updated = await txApi.approveTransaction(transactionId);
+            get().updateTransactionLocally(updated);
+          } catch (err) {
+            const message = extractErrorMessage(err);
+            set({ error: message });
+            throw new Error(message);
+          }
+        },
+
+        rejectTransaction: async (transactionId: string, reason?: string) => {
+          try {
+            const updated = await txApi.rejectTransaction(transactionId, reason);
+            get().updateTransactionLocally(updated);
+          } catch (err) {
+            const message = extractErrorMessage(err);
+            set({ error: message });
+            throw new Error(message);
+          }
+        },
+
+        updateTransactionLocally: (transaction: Transaction) => {
+          set((state) => {
+            const index = state.transactions.findIndex((t) => t._id === transaction._id);
+            if (index >= 0) {
+              const updated = [...state.transactions];
+              updated[index] = transaction;
+              return { transactions: updated };
+            } else {
+              return { transactions: [transaction, ...state.transactions] };
+            }
+          });
+        },
+
+        clearError: () => set({ error: null }),
+      };
+    },
+    {
+      name: 'insplit-feed',
+      storage: createJSONStorage(() => AsyncStorage),
+      // Only persist the transactions list and active filter
+      partialize: (state) => ({
+        transactions: state.transactions,
+        filter: state.filter,
+      }),
+    }
+  )
+);
