@@ -1,207 +1,110 @@
-# Insplit
+<div align="center">
+  <img src="mobile/assets/logo-insplit-horizontal.png" alt="Insplit" width="260" />
 
-Insplit is a full-stack expense-sharing application for roommates and small
-groups. It combines an Expo mobile app, a React administration dashboard, and
-an Express API with real-time updates.
+  <h3>Shared living, without the awkward money conversations.</h3>
 
-## Features
+  <p>Split expenses, settle balances, manage shared supplies, and keep everyone in sync from one app.</p>
 
-- Account registration, email verification, login, and password reset by OTP
-- Shared rooms with member management
-- Expense recording and cross-verification
-- Settlement tracking and approval
-- Shared inventory management
-- Receipt/image uploads through Cloudinary
-- Push notifications and live Socket.IO updates
-- Biometric login support on compatible mobile devices
-- Administrator dashboard for users, rooms, transactions, and analytics
+  <p>
+    <img alt="Expo" src="https://img.shields.io/badge/Expo-React_Native-000020?logo=expo" />
+    <img alt="Node.js" src="https://img.shields.io/badge/API-Node.js-339933?logo=node.js&logoColor=white" />
+    <img alt="MongoDB" src="https://img.shields.io/badge/Database-MongoDB-47A248?logo=mongodb&logoColor=white" />
+    <img alt="Socket.IO" src="https://img.shields.io/badge/Updates-Realtime-010101?logo=socket.io" />
+  </p>
+</div>
 
-## Project structure
+## See Insplit in action
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/expense-feed.jpg" alt="Shared expense feed" width="250" /></td>
+    <td align="center"><img src="docs/screenshots/settlements.jpg" alt="Settlement overview and expense report" width="250" /></td>
+    <td align="center"><img src="docs/screenshots/inventory.jpg" alt="Shared household inventory" width="250" /></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Review expenses</b><br/><sub>Approve or reject group purchases</sub></td>
+    <td align="center"><b>Understand spending</b><br/><sub>See balances, trends, and totals</sub></td>
+    <td align="center"><b>Track shared supplies</b><br/><sub>Update household stock together</sub></td>
+  </tr>
+</table>
+
+## Built-in operations dashboard
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/admin-transactions.png" alt="Transaction audit dashboard" width="480" /></td>
+    <td align="center"><img src="docs/screenshots/admin-users.png" alt="User management dashboard" width="480" /></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Transactions & audit</b></td>
+    <td align="center"><b>Users & permissions</b></td>
+  </tr>
+</table>
+
+<p align="center">
+  <img src="docs/screenshots/admin-inventory.png" alt="Inventory administration dashboard" width="900" />
+  <br/>
+  <b>Inventory across every room</b>
+</p>
+
+## Everything a household needs
+
+| | Feature | What it does |
+| :---: | --- | --- |
+| 💸 | **Split expenses** | Record purchases, attach receipts, and let roommates verify each entry. |
+| 🤝 | **Settle together** | Track balances and approve settlements so payments never get lost. |
+| 🏠 | **Create shared rooms** | Invite and manage the people who share a home or group budget. |
+| 🧺 | **Share inventory** | Keep household supplies visible and know what needs replacing. |
+| ⚡ | **Stay up to date** | Receive push notifications and live updates when activity happens. |
+| 🔐 | **Sign in securely** | Use email verification, password recovery, and supported biometrics. |
+| 📊 | **Manage at a glance** | Review users, rooms, transactions, inventory, and analytics from the admin dashboard. |
+
+## How it fits together
 
 ```text
-Insplit/
-├── mobile/          Expo and React Native client
-├── server/          Express, MongoDB, and Socket.IO API
-├── web/             React and Vite administration dashboard
-├── render.yaml      Render backend deployment blueprint
-├── netlify.toml     Netlify admin-dashboard configuration
-└── DEPLOYMENT.md    Production deployment guide
+Mobile app  ─┐
+             ├── Express API ── MongoDB
+Admin panel ─┘        │
+                 Socket.IO + push notifications
 ```
 
-## Technology stack
+Built with **Expo + React Native**, **React + Vite**, **Node.js + Express**,
+**MongoDB**, and **Socket.IO**.
 
-| Area | Technologies |
-| --- | --- |
-| Mobile | Expo, React Native, Expo Router, Zustand, Axios |
-| Admin | React, Vite, React Router, Recharts |
-| API | Node.js, Express, TypeScript, Socket.IO |
-| Database | MongoDB with Mongoose |
-| Authentication | JWT access/refresh tokens and bcrypt |
-| Email | Gmail SMTP or Resend |
-| Media | Cloudinary |
+## Run locally
 
-## Prerequisites
-
-- Node.js 20 or later
-- npm
-- A MongoDB database (local or MongoDB Atlas)
-- Expo Go or an Android/iOS development environment for the mobile app
-- A Gmail App Password or Resend account for email OTP delivery
-
-## Local setup
-
-Clone the repository and install each application's dependencies:
+You need Node.js 20+, npm, and MongoDB.
 
 ```powershell
-git clone <repository-url>
-cd Insplit
+# Install each part
+npm install --prefix server
+npm install --prefix mobile
+npm install --prefix web
 
-cd server
-npm install
-
-cd ../mobile
-npm install
-
-cd ../web
-npm install
-```
-
-### 1. Configure the API
-
-Copy `server/.env.example` to `server/.env` and replace the placeholders:
-
-```powershell
+# Create environment files from the included examples
 Copy-Item server/.env.example server/.env
+Copy-Item mobile/.env.example mobile/.env
+Copy-Item web/.env.example web/.env
 ```
 
-Minimum configuration:
-
-```dotenv
-PORT=5000
-NODE_ENV=development
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/insplit
-JWT_ACCESS_SECRET=replace-with-a-long-random-secret
-JWT_REFRESH_SECRET=replace-with-a-different-long-random-secret
-```
-
-For Gmail OTP delivery, enable two-step verification, create a Google App
-Password, and add:
-
-```dotenv
-GMAIL_USER=your-account@gmail.com
-GMAIL_APP_PASSWORD=your-16-character-app-password
-```
-
-Use the App Password—not the account's normal password. Alternatively, configure
-Resend:
-
-```dotenv
-RESEND_API_KEY=re_your_real_api_key
-EMAIL_FROM=Insplit <no-reply@your-verified-domain.com>
-```
-
-Never commit `.env` files or paste credentials into issues, commits, or chat.
-
-Start the API:
+Add your database URL and secrets to `server/.env`, then start each app in its own terminal:
 
 ```powershell
-cd server
-npm run dev
+npm run dev --prefix server
+npm start --prefix mobile
+npm run dev --prefix web
 ```
 
-The API is available at `http://localhost:5000/api`; its health endpoint is
-`http://localhost:5000/health`.
+For production configuration, email setup, and release checks, see [DEPLOYMENT.md](./DEPLOYMENT.md).
 
-### 2. Configure and run the mobile app
+## Project layout
 
-Copy `mobile/.env.example` to `mobile/.env` and set an API origin that the
-device can reach:
-
-```dotenv
-EXPO_PUBLIC_DEV_API_URL=http://192.168.1.20:5000
+```text
+mobile/   Expo mobile app
+server/   Express, MongoDB, and Socket.IO API
+web/      React administration dashboard
 ```
 
-Replace the sample IP with the development computer's LAN address when using a
-physical phone. Do not add `/api`; the client adds it automatically.
-
-```powershell
-cd mobile
-npm start
-```
-
-Then scan the Expo QR code or press `a` to open Android.
-
-### 3. Run the admin dashboard
-
-Optionally set the API endpoint in `web/.env`:
-
-```dotenv
-VITE_API_URL=http://localhost:5000/api
-```
-
-Start Vite:
-
-```powershell
-cd web
-npm run dev
-```
-
-### 4. Create an administrator
-
-Run the seed command with an explicit email and strong password:
-
-```powershell
-cd server
-npm run seed:admin -- admin@example.com "use-a-strong-unique-password"
-```
-
-The command promotes an existing account or creates a new administrator.
-
-## Useful commands
-
-| Component | Command | Purpose |
-| --- | --- | --- |
-| Server | `npm run dev` | Start the API with automatic reload |
-| Server | `npm run build` | Compile TypeScript |
-| Server | `npm run typecheck` | Check server types |
-| Mobile | `npm start` | Start Expo |
-| Mobile | `npm run android` | Build/run the Android project |
-| Mobile | `npm run typecheck` | Check mobile types |
-| Web | `npm run dev` | Start the Vite dashboard |
-| Web | `npm run build` | Build the production dashboard |
-| Web | `npm run typecheck` | Check dashboard types |
-
-## Email troubleshooting
-
-In development, OTPs are printed in the server terminal if no email provider is
-configured. When Gmail succeeds, the server logs `[email sent via Gmail]`.
-
-A Gmail `535` error means Google rejected the credentials. Confirm that:
-
-- `GMAIL_USER` is the account that created the App Password.
-- Two-step verification is enabled.
-- `GMAIL_APP_PASSWORD` is an active Google App Password, not the normal password.
-- The API was restarted after changing `server/.env`.
-
-## Deployment
-
-The repository includes a Render blueprint for the API and a Netlify
-configuration for the admin dashboard. Set production secrets in the hosting
-provider's environment-variable settings; do not upload `server/.env`.
-
-For the mobile release, set `EXPO_PUBLIC_PRODUCTION_API_URL` to the HTTPS API
-origin without `/api` or a trailing slash. See [DEPLOYMENT.md](./DEPLOYMENT.md)
-for the complete deployment and verification steps.
-
-## Security notes
-
-- Keep JWT secrets, database credentials, Gmail App Passwords, and API keys out
-  of Git.
-- Rotate any secret immediately if it is accidentally exposed.
-- Use separate credentials for development and production.
-- Restrict production CORS origins to trusted web clients.
-
-## License
-
-No license has been specified yet. Add a `LICENSE` file before distributing or
-accepting external contributions.
+<div align="center">
+  <sub>Made for roommates, families, trips, and small groups.</sub>
+</div>
