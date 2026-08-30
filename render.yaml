@@ -22,3 +22,13 @@ services:
         sync: false
       - key: CLOUDINARY_API_SECRET
         sync: false
+      # Configure either Gmail (both variables) or Resend (API key + sender).
+      # Without one of these providers, OTPs are printed only in development.
+      - key: GMAIL_USER
+        sync: false
+      - key: GMAIL_APP_PASSWORD
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
