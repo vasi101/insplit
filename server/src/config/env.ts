@@ -40,7 +40,12 @@ if (nodeEnv === 'production' && (accessSecret.length < 32 || refreshSecret.lengt
 }
 
 const gmailUser = process.env.GMAIL_USER ?? process.env.SMTP_USER ?? '';
-const gmailPass = process.env.GMAIL_APP_PASSWORD ?? process.env.SMTP_PASS ?? '';
+// Google displays App Passwords in four groups separated by spaces. SMTP
+// authentication expects the same 16 characters without those display spaces.
+// Preserve SMTP_PASS verbatim because a non-Gmail SMTP password may contain spaces.
+const gmailPass = process.env.GMAIL_APP_PASSWORD
+  ? process.env.GMAIL_APP_PASSWORD.replace(/\s/g, '')
+  : process.env.SMTP_PASS ?? '';
 const isGmailConfigured = !!(gmailUser && gmailPass);
 const isResendConfigured = !!process.env.RESEND_API_KEY;
 
