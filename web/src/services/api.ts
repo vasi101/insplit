@@ -8,10 +8,25 @@ import {
   ApiResponse,
 } from '../types';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+export function getApiBaseUrl(): string {
+  const custom = localStorage.getItem('insplit_custom_api_url');
+  if (custom && custom.trim()) {
+    const trimmed = custom.trim().replace(/\/+$/, '');
+    return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
+  }
+  return import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+}
+
+export function setCustomApiUrl(url: string | null) {
+  if (url && url.trim()) {
+    localStorage.setItem('insplit_custom_api_url', url.trim());
+  } else {
+    localStorage.removeItem('insplit_custom_api_url');
+  }
+}
 
 export const api = axios.create({
-  baseURL: API_BASE,
+  baseURL: getApiBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
   },
@@ -34,8 +49,9 @@ export const clearStoredTokens = () => {
   localStorage.removeItem('insplit_admin_user');
 };
 
-// Request interceptor: attach token
+// Request interceptor: attach token & dynamic baseURL
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  config.baseURL = getApiBaseUrl();
   const { accessToken } = getStoredTokens();
   if (accessToken && config.headers) {
     config.headers.Authorization = `Bearer ${accessToken}`;
@@ -88,7 +104,7 @@ api.interceptors.response.use(
         const { refreshToken } = getStoredTokens();
         if (!refreshToken) throw new Error('No refresh token');
 
-        const res = await axios.post(`${API_BASE}/auth/refresh`, { refreshToken });
+        const res = await axios.post(`${getApiBaseUrl()}/auth/refresh`, { refreshToken });
         const { tokens } = res.data.data;
         setStoredTokens(tokens.accessToken, tokens.refreshToken);
 

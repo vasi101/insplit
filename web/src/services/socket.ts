@@ -1,11 +1,12 @@
 import { io, Socket } from 'socket.io-client';
-import { getStoredTokens } from './api';
+import { getStoredTokens, getApiBaseUrl } from './api';
 
 let socket: Socket | null = null;
 
-const SOCKET_URL = import.meta.env.VITE_API_URL
-  ? import.meta.env.VITE_API_URL.replace('/api', '')
-  : 'http://localhost:5000';
+export function getSocketUrl(): string {
+  const apiBase = getApiBaseUrl();
+  return apiBase.replace(/\/api\/?$/, '');
+}
 
 type SocketListener = (...args: any[]) => void;
 const eventListeners = new Map<string, Set<SocketListener>>();
@@ -24,7 +25,7 @@ export function getAdminSocket(): Socket | null {
     return socket;
   }
 
-  socket = io(SOCKET_URL, {
+  socket = io(getSocketUrl(), {
     auth: { token: accessToken },
     transports: ['websocket', 'polling'],
     reconnection: true,
