@@ -38,6 +38,14 @@ export const useFeedStore = create<FeedState>((set, get) => {
     onTransactionRejected: (transaction) => {
       get().updateTransactionLocally(transaction);
     },
+    onTransactionUpdated: (transaction) => {
+      get().updateTransactionLocally(transaction);
+    },
+    onTransactionDeleted: (transactionId) => {
+      set((state) => ({
+        transactions: state.transactions.filter((t) => t._id !== transactionId),
+      }));
+    },
   });
 
   return {

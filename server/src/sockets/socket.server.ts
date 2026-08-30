@@ -9,7 +9,7 @@ export function initSocketServer(httpServer: HttpServer): SocketIOServer {
   io = new SocketIOServer(httpServer, {
     cors: {
       origin: env.corsOrigins,
-      methods: ['GET', 'POST'],
+      methods: ['GET', 'POST', 'PATCH', 'DELETE'],
       credentials: true,
     },
     transports: ['websocket', 'polling'],
@@ -23,24 +23,38 @@ export function initSocketServer(httpServer: HttpServer): SocketIOServer {
     }
     try {
       const payload = verifyAccessToken(token);
-      (socket as Socket & { userId: string }).userId = payload.userId;
+      (socket as Socket & { userId: string; isAdmin?: boolean }).userId = payload.userId;
+      (socket as Socket & { userId: string; isAdmin?: boolean }).isAdmin = !!payload.isAdmin;
       next();
     } catch {
       next(new Error('Invalid or expired token'));
     }
   });
 
-  io.on('connection', (socket: Socket & { userId?: string }) => {
-    console.log(`🔌 Socket connected: ${socket.id} (user: ${socket.userId})`);
+  io.on('connection', (socket: Socket & { userId?: string; isAdmin?: boolean }) => {
+    console.log(`🔌 Socket connected: ${socket.id} (user: ${socket.userId}, admin: ${!!socket.isAdmin})`);
+
+    // Auto-join admin channel if user is admin
+    if (socket.isAdmin) {
+      socket.join('admin:channel');
+    }
 
     // Client joins a room channel
     socket.on('join:room', (roomId: string) => {
-      socket.join(`room:${roomId}`);
-      console.log(`👤 User ${socket.userId} joined room channel: room:${roomId}`);
+      if (roomId) {
+        socket.join(`room:${roomId}`);
+        console.log(`👤 User ${socket.userId} joined room channel: room:${roomId}`);
+      }
     });
 
     socket.on('leave:room', (roomId: string) => {
-      socket.leave(`room:${roomId}`);
+      if (roomId) {
+        socket.leave(`room:${roomId}`);
+      }
+    });
+
+    socket.on('join:admin', () => {
+      socket.join('admin:channel');
     });
 
     socket.on('disconnect', () => {
@@ -53,4 +67,21 @@ export function initSocketServer(httpServer: HttpServer): SocketIOServer {
 
 export function getSocketServer(): SocketIOServer | null {
   return io;
+}
+
+export function emitToRoom(roomId: string, event: string, payload: any): void {
+  if (!io) return;
+  io.to(`room:${roomId}`).emit(event, payload);
+  // Also forward to admin channel
+  io.to('admin:channel').emit(event, payload);
+}
+
+export function emitToAdmin(event: string, payload: any): void {
+  if (!io) return;
+  io.to('admin:channel').emit(event, payload);
+}
+
+export function emitGlobal(event: string, payload: any): void {
+  if (!io) return;
+  io.emit(event, payload);
 }

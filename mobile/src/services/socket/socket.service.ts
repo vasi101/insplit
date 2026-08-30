@@ -1,7 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import { API_CONFIG } from '../../../constants/api';
 import { getAccessToken, getCustomBaseUrl } from '../../utils/storage';
-import { Transaction, Settlement } from '../../types';
+import { Transaction, Settlement, InventoryItem } from '../../types';
 
 let socket: Socket | null = null;
 let activeRoomId: string | null = null;
@@ -10,7 +10,13 @@ export interface SocketEventHandlers {
   onTransactionCreated?: (transaction: Transaction) => void;
   onTransactionApproved?: (transaction: Transaction) => void;
   onTransactionRejected?: (transaction: Transaction) => void;
+  onTransactionUpdated?: (transaction: Transaction) => void;
+  onTransactionDeleted?: (transactionId: string) => void;
   onSettlementCreated?: (settlement: Settlement) => void;
+  onInventoryCreated?: (item: InventoryItem) => void;
+  onInventoryUpdated?: (item: InventoryItem) => void;
+  onInventoryDeleted?: (itemId: string) => void;
+  onRoomUpdated?: (data: any) => void;
 }
 
 let handlers: SocketEventHandlers = {};
@@ -34,7 +40,7 @@ export async function connectSocket(): Promise<Socket | null> {
     auth: { token },
     transports: ['websocket', 'polling'],
     reconnection: true,
-    reconnectionAttempts: 5,
+    reconnectionAttempts: 10,
     reconnectionDelay: 1000,
   });
 
@@ -49,6 +55,7 @@ export async function connectSocket(): Promise<Socket | null> {
     console.log('🔌 Disconnected from Socket.IO server');
   });
 
+  // Transactions
   socket.on('transaction:created', (data: { transaction: Transaction }) => {
     handlers.onTransactionCreated?.(data.transaction);
   });
@@ -61,8 +68,30 @@ export async function connectSocket(): Promise<Socket | null> {
     handlers.onTransactionRejected?.(data.transaction);
   });
 
+  socket.on('transaction:updated', (data: { transaction: Transaction }) => {
+    handlers.onTransactionUpdated?.(data.transaction);
+  });
+
+  socket.on('transaction:deleted', (data: { transactionId: string }) => {
+    handlers.onTransactionDeleted?.(data.transactionId);
+  });
+
+  // Settlements
   socket.on('settlement:created', (data: { settlement: Settlement }) => {
     handlers.onSettlementCreated?.(data.settlement);
+  });
+
+  // Inventory
+  socket.on('inventory:created', (data: { item: InventoryItem }) => {
+    handlers.onInventoryCreated?.(data.item);
+  });
+
+  socket.on('inventory:updated', (data: { item: InventoryItem }) => {
+    handlers.onInventoryUpdated?.(data.item);
+  });
+
+  socket.on('inventory:deleted', (data: { itemId: string }) => {
+    handlers.onInventoryDeleted?.(data.itemId);
   });
 
   return socket;

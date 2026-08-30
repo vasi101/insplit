@@ -4,6 +4,7 @@ import { env } from '../config/env';
 export interface TokenPayload {
   userId: string;
   email: string;
+  isAdmin?: boolean;
 }
 
 export interface RefreshTokenPayload {

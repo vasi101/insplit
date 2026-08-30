@@ -17,9 +17,26 @@ export interface AuthResponseData {
   tokens: AuthTokens;
 }
 
-export async function register(payload: RegisterPayload): Promise<AuthResponseData> {
-  const res = await apiClient.post<ApiResponse<AuthResponseData>>('/auth/register', payload);
+export async function register(payload: RegisterPayload): Promise<{ email: string; verificationRequired: boolean }> {
+  const res = await apiClient.post<ApiResponse<{ email: string; verificationRequired: boolean }>>('/auth/register', payload);
   return res.data.data!;
+}
+
+export async function verifyEmail(email: string, code: string): Promise<AuthResponseData> {
+  const res = await apiClient.post<ApiResponse<AuthResponseData>>('/auth/verify-email', { email, code });
+  return res.data.data!;
+}
+
+export async function resendVerification(email: string): Promise<void> {
+  await apiClient.post<ApiResponse<null>>('/auth/resend-verification', { email });
+}
+
+export async function forgotPassword(email: string): Promise<void> {
+  await apiClient.post<ApiResponse<null>>('/auth/forgot-password', { email });
+}
+
+export async function resetPassword(email: string, code: string, password: string): Promise<void> {
+  await apiClient.post<ApiResponse<null>>('/auth/reset-password', { email, code, password });
 }
 
 export async function login(payload: LoginPayload): Promise<AuthResponseData> {

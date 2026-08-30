@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
+import path from 'path';
+import fs from 'fs';
 import rateLimit from 'express-rate-limit';
 import { env } from './config/env';
 import authRoutes from './modules/auth/auth.routes';
@@ -8,6 +10,8 @@ import roomRoutes from './modules/rooms/room.routes';
 import transactionRoutes from './modules/transactions/transaction.routes';
 import settlementRoutes from './modules/settlements/settlement.routes';
 import uploadRoutes from './modules/uploads/upload.routes';
+import inventoryRoutes from './modules/inventory/inventory.routes';
+import adminRoutes from './modules/admin/admin.routes';
 import { errorMiddleware, notFoundMiddleware } from './middleware/error.middleware';
 import { connectDatabase } from './config/database';
 
@@ -72,6 +76,20 @@ app.use('/api/rooms', roomRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/settlements', settlementRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/inventory', inventoryRoutes);
+app.use('/api/admin', adminRoutes);
+
+// ─── Static Web Admin App (Production Support) ──────────────────────────────
+const webDistPath = path.resolve(__dirname, '../../web/dist');
+if (fs.existsSync(webDistPath)) {
+  app.use(express.static(webDistPath));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path === '/health') {
+      return next();
+    }
+    res.sendFile(path.join(webDistPath, 'index.html'));
+  });
+}
 
 // ─── Error Handling ─────────────────────────────────────────────────────────
 app.use(notFoundMiddleware);

@@ -17,13 +17,12 @@ function TabIcon({ focused, activeIcon, icon }: {
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
-    <View style={[styles.tabItem, focused && styles.tabItemFocused]}>
+    <View style={styles.tabItem}>
       <Ionicons
         name={focused ? activeIcon : icon}
-        size={focused ? 24 : 23}
-        color={focused ? colors.textInverted : colors.textMuted}
+        size={25}
+        color={focused ? colors.primary : colors.textMuted}
       />
-      {focused ? <View style={styles.activeDot} /> : null}
     </View>
   );
 }
@@ -32,7 +31,7 @@ export default function TabLayout() {
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
-  const horizontalGap = 16;
+  const horizontalGap = 30;
   const bottomOffset = Platform.OS === 'ios' ? Math.max(insets.bottom, 8) : 0;
   const tabBarHeight = Platform.OS === 'ios' ? 64 : 62;
 
@@ -54,7 +53,7 @@ export default function TabLayout() {
           paddingBottom: 6,
           position: 'absolute',
           bottom: bottomOffset,
-          borderRadius: 24,
+          borderRadius: 18,
           overflow: 'hidden',
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 8 },
@@ -62,7 +61,7 @@ export default function TabLayout() {
           shadowRadius: 16,
           elevation: 10,
         },
-        tabBarItemStyle: { borderRadius: 20 },
+        tabBarItemStyle: { borderRadius: 14 },
         sceneStyle: {
           paddingBottom: tabBarHeight + bottomOffset + 4,
           backgroundColor: colors.background,
@@ -118,26 +117,14 @@ export default function TabLayout() {
 
 const createStyles = (Colors: ThemeColors) => StyleSheet.create({
   tabBarBackground: {
-    borderRadius: 24,
+    borderRadius: 18,
     overflow: 'hidden',
   },
   tabItem: {
-    width: 48,
+    width: 42,
     height: 42,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 16,
-  },
-  tabItemFocused: {
-    backgroundColor: Colors.primary,
-  },
-  activeDot: {
-    position: 'absolute',
-    bottom: 4,
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: Colors.textInverted,
-    opacity: 0.8,
+    borderRadius: 14,
   },
 });
