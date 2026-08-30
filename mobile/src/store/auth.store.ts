@@ -22,7 +22,8 @@ interface AuthState {
   // Actions
   initialize: () => Promise<void>;
   login: (payload: authApi.LoginPayload) => Promise<void>;
-  register: (payload: authApi.RegisterPayload) => Promise<void>;
+  register: (payload: authApi.RegisterPayload) => Promise<string>;
+  verifyEmail: (email: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (payload: { name?: string; profileImage?: string; phone?: string }) => Promise<void>;
   setCustomBaseUrl: (url: string) => Promise<void>;
@@ -75,7 +76,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   register: async (payload) => {
     set({ isLoading: true, error: null });
     try {
-      const { user, tokens } = await authApi.register(payload);
+      const result = await authApi.register(payload);
+      set({ isLoading: false });
+      return result.email;
+    } catch (err) {
+      const message = extractErrorMessage(err);
+      set({ error: message, isLoading: false });
+      throw new Error(message);
+    }
+  },
+
+  verifyEmail: async (email, code) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { user, tokens } = await authApi.verifyEmail(email, code);
       await saveTokens(tokens.accessToken, tokens.refreshToken);
       set({ user, isAuthenticated: true, isLoading: false });
       await connectSocket();

@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import { Transaction, ITransaction, TransactionCategory } from './transaction.model';
 import { Room } from '../rooms/room.model';
 import { createError } from '../../middleware/error.middleware';
-import { getSocketServer } from '../../sockets/socket.server';
+import { emitToRoom } from '../../sockets/socket.server';
 import { sendPushNotifications } from '../../notifications/push.service';
 import { User } from '../auth/auth.model';
 
@@ -86,11 +86,8 @@ export async function createTransaction(input: CreateTransactionInput): Promise<
     { path: 'paidBy', select: 'name email profileImage' },
   ]);
 
-  // Emit real-time event to room members
-  const io = getSocketServer();
-  if (io) {
-    io.to(`room:${input.roomId}`).emit('transaction:created', { transaction: populated });
-  }
+  // Emit real-time event to room members and admin
+  emitToRoom(input.roomId, 'transaction:created', { transaction: populated });
 
   // Send push notifications to other members (Rule 8: only after successful save)
   const pushTokens = await getRoomMemberPushTokens(input.roomId, input.createdBy);
@@ -177,10 +174,7 @@ export async function approveTransaction(transactionId: string, verifierId: stri
     { path: 'verification.verifiedBy', select: 'name email profileImage' },
   ]);
 
-  const io = getSocketServer();
-  if (io) {
-    io.to(`room:${transaction.roomId}`).emit('transaction:approved', { transaction: populated });
-  }
+  emitToRoom(transaction.roomId.toString(), 'transaction:approved', { transaction: populated });
 
   // Notify the creator
   const creator = await User.findById(transaction.createdBy).select('pushToken name');
@@ -230,10 +224,7 @@ export async function rejectTransaction(
     { path: 'verification.verifiedBy', select: 'name email profileImage' },
   ]);
 
-  const io = getSocketServer();
-  if (io) {
-    io.to(`room:${transaction.roomId}`).emit('transaction:rejected', { transaction: populated });
-  }
+  emitToRoom(transaction.roomId.toString(), 'transaction:rejected', { transaction: populated });
 
   // Notify the creator
   const creator = await User.findById(transaction.createdBy).select('pushToken');
@@ -296,10 +287,7 @@ export async function voidTransaction(transactionId: string, userId: string): Pr
   transaction.status = 'VOIDED';
   await transaction.save();
 
-  const io = getSocketServer();
-  if (io) {
-    io.to(`room:${transaction.roomId}`).emit('transaction:updated', { transaction });
-  }
+  emitToRoom(transaction.roomId.toString(), 'transaction:updated', { transaction });
 
   return transaction;
 }

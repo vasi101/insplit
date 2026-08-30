@@ -123,6 +123,26 @@ export interface Settlement {
   createdAt: string;
 }
 
+// ─── Inventory ───────────────────────────────────────────────────────────────
+
+export type InventoryCategory = 'KITCHEN' | 'CLEANING' | 'BATHROOM' | 'PANTRY' | 'OTHER';
+export type InventoryUnit = 'kg' | 'L' | 'pcs' | 'packets' | 'boxes' | 'other';
+
+export interface InventoryItem {
+  _id: string;
+  roomId: string;
+  name: string;
+  category: InventoryCategory;
+  quantity: number;
+  unit: InventoryUnit;
+  minQuantity?: number;
+  addedBy: User | string;
+  lastUpdatedBy: User | string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;

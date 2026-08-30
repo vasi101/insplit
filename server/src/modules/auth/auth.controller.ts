@@ -28,6 +28,20 @@ export const verifyPasswordValidation = [
   body('password').notEmpty().withMessage('Password is required'),
 ];
 
+export const emailCodeValidation = [
+  body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
+  body('code').isLength({ min: 6, max: 6 }).isNumeric().withMessage('A 6-digit code is required'),
+];
+
+export const emailOnlyValidation = [
+  body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
+];
+
+export const resetPasswordValidation = [
+  ...emailCodeValidation,
+  body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
+];
+
 function handleValidationErrors(req: Request, res: Response): boolean {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -45,13 +59,45 @@ function handleValidationErrors(req: Request, res: Response): boolean {
 export async function register(req: Request, res: Response, next: NextFunction): Promise<void> {
   if (handleValidationErrors(req, res)) return;
   try {
-    const { user, tokens } = await authService.registerUser(req.body);
+    const { email } = await authService.registerUser(req.body);
     res.status(201).json(
-      successResponse({ user, tokens }, 'Account created successfully')
+      successResponse({ email, verificationRequired: true }, 'Verification code sent')
     );
   } catch (error) {
     next(error);
   }
+}
+
+export async function verifyEmail(req: Request, res: Response, next: NextFunction): Promise<void> {
+  if (handleValidationErrors(req, res)) return;
+  try {
+    const { user, tokens } = await authService.verifyEmail(req.body.email, req.body.code);
+    res.status(200).json(successResponse({ user, tokens }, 'Email verified successfully'));
+  } catch (error) { next(error); }
+}
+
+export async function resendVerification(req: Request, res: Response, next: NextFunction): Promise<void> {
+  if (handleValidationErrors(req, res)) return;
+  try {
+    await authService.resendVerification(req.body.email);
+    res.status(200).json(successResponse(null, 'If the account needs verification, a new code has been sent'));
+  } catch (error) { next(error); }
+}
+
+export async function forgotPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+  if (handleValidationErrors(req, res)) return;
+  try {
+    await authService.requestPasswordReset(req.body.email);
+    res.status(200).json(successResponse(null, 'If an account exists, a reset code has been sent'));
+  } catch (error) { next(error); }
+}
+
+export async function resetPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+  if (handleValidationErrors(req, res)) return;
+  try {
+    await authService.resetPassword(req.body.email, req.body.code, req.body.password);
+    res.status(200).json(successResponse(null, 'Password reset successfully'));
+  } catch (error) { next(error); }
 }
 
 export async function login(req: Request, res: Response, next: NextFunction): Promise<void> {

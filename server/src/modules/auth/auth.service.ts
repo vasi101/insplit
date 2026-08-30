@@ -2,6 +2,8 @@ import bcrypt from 'bcryptjs';
 import { User, IUser } from './auth.model';
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../../utils/jwt';
 import { createError } from '../../middleware/error.middleware';
+import crypto from 'crypto';
+import { sendCodeEmail } from '../../notifications/email.service';
 
 const SALT_ROUNDS = 12;
 
@@ -26,13 +28,21 @@ export interface AuthResult {
   tokens: AuthTokens;
 }
 
+const CODE_TTL_MS = 10 * 60 * 1000;
+const createCode = () => crypto.randomInt(100000, 1000000).toString();
+const hashCode = (code: string) => crypto.createHash('sha256').update(code).digest('hex');
+
 function generateTokens(user: IUser): AuthTokens {
-  const accessToken = signAccessToken({ userId: user._id.toString(), email: user.email });
+  const accessToken = signAccessToken({
+    userId: user._id.toString(),
+    email: user.email,
+    isAdmin: !!user.isAdmin,
+  });
   const refreshToken = signRefreshToken({ userId: user._id.toString() });
   return { accessToken, refreshToken };
 }
 
-export async function registerUser(input: RegisterInput): Promise<AuthResult> {
+export async function registerUser(input: RegisterInput): Promise<{ email: string }> {
   const existingUser = await User.findOne({ email: input.email.toLowerCase() });
   if (existingUser) {
     throw createError('Email is already registered', 409, 'EMAIL_ALREADY_EXISTS');
@@ -40,18 +50,28 @@ export async function registerUser(input: RegisterInput): Promise<AuthResult> {
 
   const passwordHash = await bcrypt.hash(input.password, SALT_ROUNDS);
 
+  const code = createCode();
   const user = await User.create({
     name: input.name.trim(),
     email: input.email.toLowerCase().trim(),
     passwordHash,
+    emailVerified: false,
+    emailVerificationCodeHash: hashCode(code),
+    emailVerificationExpiresAt: new Date(Date.now() + CODE_TTL_MS),
   });
-
-  const tokens = generateTokens(user);
-
-  // Store hashed refresh token
-  await User.findByIdAndUpdate(user._id, { refreshToken: tokens.refreshToken });
-
-  return { user, tokens };
+  try {
+    await sendCodeEmail({
+      to: user.email,
+      subject: 'Verify your Insplit email',
+      heading: 'Welcome to Insplit',
+      message: 'Enter this verification code to activate your account:',
+      code,
+    });
+  } catch (error) {
+    await User.findByIdAndDelete(user._id);
+    throw error;
+  }
+  return { email: user.email };
 }
 
 export async function loginUser(input: LoginInput): Promise<AuthResult> {
@@ -66,11 +86,70 @@ export async function loginUser(input: LoginInput): Promise<AuthResult> {
   if (!isPasswordValid) {
     throw createError('Invalid email or password', 401, 'INVALID_CREDENTIALS');
   }
+  if (!user.emailVerified) {
+    throw createError('Please verify your email before signing in', 403, 'EMAIL_NOT_VERIFIED');
+  }
 
   const tokens = generateTokens(user);
   await User.findByIdAndUpdate(user._id, { refreshToken: tokens.refreshToken });
 
   return { user, tokens };
+}
+
+export async function verifyEmail(email: string, code: string): Promise<AuthResult> {
+  const user = await User.findOne({ email: email.toLowerCase().trim() }).select(
+    '+emailVerificationCodeHash +emailVerificationExpiresAt'
+  );
+  if (!user || user.emailVerified || user.emailVerificationCodeHash !== hashCode(code)
+    || !user.emailVerificationExpiresAt || user.emailVerificationExpiresAt.getTime() < Date.now()) {
+    throw createError('Invalid or expired verification code', 400, 'INVALID_VERIFICATION_CODE');
+  }
+  user.emailVerified = true;
+  user.emailVerificationCodeHash = undefined;
+  user.emailVerificationExpiresAt = undefined;
+  const tokens = generateTokens(user);
+  user.refreshToken = tokens.refreshToken;
+  await user.save();
+  return { user, tokens };
+}
+
+export async function resendVerification(email: string): Promise<void> {
+  const user = await User.findOne({ email: email.toLowerCase().trim() }).select(
+    '+emailVerificationCodeHash +emailVerificationExpiresAt'
+  );
+  if (!user || user.emailVerified) return;
+  const code = createCode();
+  user.emailVerificationCodeHash = hashCode(code);
+  user.emailVerificationExpiresAt = new Date(Date.now() + CODE_TTL_MS);
+  await user.save();
+  await sendCodeEmail({ to: user.email, subject: 'Your new Insplit verification code', heading: 'Verify your email', message: 'Enter this code to activate your account:', code });
+}
+
+export async function requestPasswordReset(email: string): Promise<void> {
+  const user = await User.findOne({ email: email.toLowerCase().trim() }).select(
+    '+passwordResetCodeHash +passwordResetExpiresAt'
+  );
+  if (!user) return;
+  const code = createCode();
+  user.passwordResetCodeHash = hashCode(code);
+  user.passwordResetExpiresAt = new Date(Date.now() + CODE_TTL_MS);
+  await user.save();
+  await sendCodeEmail({ to: user.email, subject: 'Reset your Insplit password', heading: 'Password reset', message: 'Enter this code in Insplit to choose a new password:', code });
+}
+
+export async function resetPassword(email: string, code: string, password: string): Promise<void> {
+  const user = await User.findOne({ email: email.toLowerCase().trim() }).select(
+    '+passwordHash +passwordResetCodeHash +passwordResetExpiresAt +refreshToken'
+  );
+  if (!user || user.passwordResetCodeHash !== hashCode(code) || !user.passwordResetExpiresAt
+    || user.passwordResetExpiresAt.getTime() < Date.now()) {
+    throw createError('Invalid or expired reset code', 400, 'INVALID_RESET_CODE');
+  }
+  user.passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+  user.passwordResetCodeHash = undefined;
+  user.passwordResetExpiresAt = undefined;
+  user.refreshToken = undefined;
+  await user.save();
 }
 
 export async function refreshTokens(oldRefreshToken: string): Promise<AuthTokens> {

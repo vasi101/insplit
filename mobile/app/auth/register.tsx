@@ -58,12 +58,12 @@ export default function RegisterScreen() {
     if (!validate()) return;
 
     try {
-      await registerUser({
+      const registeredEmail = await registerUser({
         name: name.trim(),
         email: email.trim().toLowerCase(),
         password,
       });
-      router.replace('/(tabs)/feed');
+      router.replace({ pathname: '/auth/verify-email', params: { email: registeredEmail } });
     } catch {
       // error is handled and displayed from store
     }

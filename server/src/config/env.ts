@@ -16,7 +16,8 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
   throw new Error('PORT must be an integer between 1 and 65535');
 }
 
-const corsOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:8081')
+const defaultCorsOrigins = ['http://localhost:8081', 'exp://localhost:8081', 'http://localhost:5173', 'http://localhost:3000'];
+const corsOrigins = (process.env.CORS_ORIGINS ?? defaultCorsOrigins.join(','))
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
@@ -31,6 +32,11 @@ const refreshSecret = requireEnv('JWT_REFRESH_SECRET');
 if (nodeEnv === 'production' && (accessSecret.length < 32 || refreshSecret.length < 32)) {
   throw new Error('JWT secrets must each be at least 32 characters in production');
 }
+
+const gmailUser = process.env.GMAIL_USER ?? process.env.SMTP_USER ?? '';
+const gmailPass = process.env.GMAIL_APP_PASSWORD ?? process.env.SMTP_PASS ?? '';
+const isGmailConfigured = !!(gmailUser && gmailPass);
+const isResendConfigured = !!process.env.RESEND_API_KEY;
 
 export const env = {
   port,
@@ -48,5 +54,13 @@ export const env = {
     apiKey: process.env.CLOUDINARY_API_KEY ?? '',
     apiSecret: process.env.CLOUDINARY_API_SECRET ?? '',
     configured: !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET),
+  },
+  email: {
+    resendApiKey: process.env.RESEND_API_KEY ?? '',
+    from: process.env.EMAIL_FROM ?? (gmailUser ? `Insplit <${gmailUser}>` : 'Insplit <onboarding@resend.dev>'),
+    gmailUser,
+    gmailPass,
+    configured: isGmailConfigured || isResendConfigured,
+    type: isGmailConfigured ? ('gmail' as const) : isResendConfigured ? ('resend' as const) : ('none' as const),
   },
 };

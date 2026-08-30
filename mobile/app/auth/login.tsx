@@ -161,6 +161,10 @@ export default function LoginScreen() {
             error={validationErrors.password}
           />
 
+          <TouchableOpacity style={styles.forgotLink} onPress={() => router.push('/auth/forgot-password')}>
+            <Text style={styles.signupLink}>Forgot password?</Text>
+          </TouchableOpacity>
+
           {canUseBiometrics ? (
             <TouchableOpacity style={styles.biometricOption} onPress={() => setRememberBiometric((value) => !value)} activeOpacity={0.75}>
               <Ionicons name={rememberBiometric ? 'checkbox' : 'square-outline'} size={21} color={rememberBiometric ? Colors.primary : Colors.textMuted} />
@@ -272,6 +276,7 @@ const createStyles = (Colors: ThemeColors) => StyleSheet.create({
   submitButton: {
     marginTop: Spacing.sm,
   },
+  forgotLink: { alignSelf: 'flex-end', marginBottom: Spacing.sm },
   biometricOption: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.sm },
   biometricOptionText: { flex: 1, color: Colors.textSecondary, fontSize: 12, fontWeight: '600' },
   biometricButton: { minHeight: 48, marginTop: Spacing.md, borderWidth: 1, borderColor: Colors.border, borderRadius: BorderRadius.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, backgroundColor: Colors.surfaceSubtle },

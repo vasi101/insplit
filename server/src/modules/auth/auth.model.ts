@@ -10,6 +10,12 @@ export interface IUser extends Document {
   phone?: string;
   pushToken?: string;
   refreshToken?: string;
+  emailVerified: boolean;
+  isAdmin: boolean;
+  emailVerificationCodeHash?: string;
+  emailVerificationExpiresAt?: Date;
+  passwordResetCodeHash?: string;
+  passwordResetExpiresAt?: Date;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(password: string): Promise<boolean>;
@@ -54,6 +60,18 @@ const UserSchema = new Schema<IUser>(
       default: null,
       select: false,
     },
+    emailVerified: {
+      type: Boolean,
+      default: true,
+    },
+    isAdmin: {
+      type: Boolean,
+      default: false,
+    },
+    emailVerificationCodeHash: { type: String, select: false, default: null },
+    emailVerificationExpiresAt: { type: Date, select: false, default: null },
+    passwordResetCodeHash: { type: String, select: false, default: null },
+    passwordResetExpiresAt: { type: Date, select: false, default: null },
   },
   {
     timestamps: true,
@@ -61,6 +79,10 @@ const UserSchema = new Schema<IUser>(
       transform(_doc, ret: Record<string, unknown>) {
         delete ret['passwordHash'];
         delete ret['refreshToken'];
+        delete ret['emailVerificationCodeHash'];
+        delete ret['emailVerificationExpiresAt'];
+        delete ret['passwordResetCodeHash'];
+        delete ret['passwordResetExpiresAt'];
         return ret;
       },
     },

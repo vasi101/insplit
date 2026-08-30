@@ -12,6 +12,13 @@ import {
   updateProfileValidation,
   verifyPassword,
   verifyPasswordValidation,
+  verifyEmail,
+  resendVerification,
+  forgotPassword,
+  resetPassword,
+  emailCodeValidation,
+  emailOnlyValidation,
+  resetPasswordValidation,
 } from './auth.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
 
@@ -21,6 +28,10 @@ const router = Router();
 router.post('/register', registerValidation, register);
 router.post('/login', loginValidation, login);
 router.post('/refresh', refresh);
+router.post('/verify-email', emailCodeValidation, verifyEmail);
+router.post('/resend-verification', emailOnlyValidation, resendVerification);
+router.post('/forgot-password', emailOnlyValidation, forgotPassword);
+router.post('/reset-password', resetPasswordValidation, resetPassword);
 
 // Protected routes
 router.post('/logout', authMiddleware, logout);

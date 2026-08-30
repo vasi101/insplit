@@ -44,7 +44,21 @@
           "cameraPermission": "Insplit needs access to your camera to take receipt photos for expenses."
         }
       ],
-      "expo-status-bar"
+      "expo-status-bar",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#10165B",
+          "image": "./assets/icon-insplit-balance.png",
+          "imageWidth": 160,
+          "resizeMode": "contain",
+          "dark": {
+            "backgroundColor": "#10165B",
+            "image": "./assets/icon-insplit-balance.png"
+          }
+        }
+      ]
     ],
     "scheme": "insplit",
     "extra": {
