@@ -14,7 +14,14 @@ export function getApiBaseUrl(): string {
     const trimmed = custom.trim().replace(/\/+$/, '');
     return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
   }
-  return import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  // Default to production Vercel backend if not on local dev server
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    return 'https://insplit-wine.vercel.app/api';
+  }
+  return 'http://localhost:5000/api';
 }
 
 export function setCustomApiUrl(url: string | null) {
