@@ -16,7 +16,13 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
   throw new Error('PORT must be an integer between 1 and 65535');
 }
 
-const defaultCorsOrigins = ['http://localhost:8081', 'exp://localhost:8081', 'http://localhost:5173', 'http://localhost:3000'];
+const defaultCorsOrigins = [
+  'http://localhost:8081',
+  'exp://localhost:8081',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://insplit.netlify.app',
+];
 const corsOrigins = (process.env.CORS_ORIGINS ?? defaultCorsOrigins.join(','))
   .split(',')
   .map((origin) => origin.trim())
