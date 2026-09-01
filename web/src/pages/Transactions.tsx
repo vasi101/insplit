@@ -13,6 +13,7 @@ import {
   DollarSign,
 } from 'lucide-react';
 import { Header } from '../components/layout/Header';
+import { TableSkeleton } from '../components/common/TableSkeleton';
 import { Modal } from '../components/common/Modal';
 import { Badge } from '../components/common/Badge';
 import {
@@ -302,11 +303,7 @@ export function TransactionsPage() {
             </thead>
             <tbody>
               {isLoading && transactions.length === 0 ? (
-                <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-                    Loading transactions...
-                  </td>
-                </tr>
+                <TableSkeleton columns={8} />
               ) : transactions.length === 0 ? (
                 <tr>
                   <td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>

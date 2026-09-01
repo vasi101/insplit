@@ -11,6 +11,7 @@ import {
   Home,
 } from 'lucide-react';
 import { Header } from '../components/layout/Header';
+import { TableSkeleton } from '../components/common/TableSkeleton';
 import { Modal } from '../components/common/Modal';
 import { Badge } from '../components/common/Badge';
 import {
@@ -317,11 +318,7 @@ export function InventoryPage() {
             </thead>
             <tbody>
               {isLoading && items.length === 0 ? (
-                <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-                    Loading inventory stock...
-                  </td>
-                </tr>
+                <TableSkeleton columns={7} />
               ) : items.length === 0 ? (
                 <tr>
                   <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>

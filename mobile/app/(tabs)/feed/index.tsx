@@ -16,6 +16,7 @@ import { useFeedStore, FeedFilter } from '../../../src/store/feed.store';
 import { TransactionCard } from '../../../src/components/feed/TransactionCard';
 import { Button } from '../../../src/components/ui/Button';
 import { EmptyState } from '../../../src/components/ui/EmptyState';
+import { CardListSkeleton } from '../../../src/components/ui/Skeleton';
 import { Spacing, BorderRadius, Shadows, ThemeColors } from '../../../constants/theme';
 import { useThemeColors } from '../../../src/store/theme.store';
 import { Transaction } from '../../../src/types';
@@ -141,7 +142,7 @@ export default function FeedScreen() {
 
         {/* Feed List */}
         <FlatList
-          data={transactions}
+          data={isFeedLoading && transactions.length === 0 ? [] : transactions}
           keyExtractor={(item) => item._id}
           renderItem={({ item }) => (
             <TransactionCard
@@ -163,14 +164,16 @@ export default function FeedScreen() {
             />
           }
           ListEmptyComponent={
-            !isFeedLoading ? (
+            isFeedLoading ? (
+              <CardListSkeleton />
+            ) : (
               <EmptyState
                 icon={<Text style={{ fontSize: 44 }}>🧾</Text>}
                 title={filter === 'ALL' ? 'No expenses yet' : `No ${filter.toLowerCase()} expenses`}
                 actionTitle={filter === 'ALL' ? '+ Add First Expense' : undefined}
                 onAction={filter === 'ALL' ? () => router.push('/(tabs)/feed/create') : undefined}
               />
-            ) : null
+            )
           }
         />
 
