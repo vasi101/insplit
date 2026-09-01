@@ -12,6 +12,7 @@ import {
   Shield,
 } from 'lucide-react';
 import { Header } from '../components/layout/Header';
+import { TableSkeleton } from '../components/common/TableSkeleton';
 import { Modal } from '../components/common/Modal';
 import { Badge } from '../components/common/Badge';
 import { fetchRooms, createRoom, deleteRoom, fetchUsers } from '../services/api';
@@ -208,11 +209,7 @@ export function RoomsPage() {
             </thead>
             <tbody>
               {isLoading && rooms.length === 0 ? (
-                <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-                    Loading rooms...
-                  </td>
-                </tr>
+                <TableSkeleton columns={6} />
               ) : rooms.length === 0 ? (
                 <tr>
                   <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>

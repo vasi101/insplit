@@ -16,6 +16,7 @@ import {
   Calendar,
 } from 'lucide-react';
 import { Header } from '../components/layout/Header';
+import { TableSkeleton } from '../components/common/TableSkeleton';
 import { Modal } from '../components/common/Modal';
 import { Badge } from '../components/common/Badge';
 import {
@@ -286,11 +287,7 @@ export function UsersPage() {
             </thead>
             <tbody>
               {isLoading && users.length === 0 ? (
-                <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-                    Loading user directory...
-                  </td>
-                </tr>
+                <TableSkeleton columns={7} />
               ) : users.length === 0 ? (
                 <tr>
                   <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>

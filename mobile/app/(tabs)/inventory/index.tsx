@@ -23,6 +23,7 @@ import { useInventoryStore } from '../../../src/store/inventory.store';
 import { useAuthStore } from '../../../src/store/auth.store';
 import { InventoryCategory, InventoryUnit, InventoryItem } from '../../../src/types';
 import { EmptyState } from '../../../src/components/ui/EmptyState';
+import { CardListSkeleton } from '../../../src/components/ui/Skeleton';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -570,9 +571,9 @@ export default function InventoryScreen() {
 
       {/* Item List */}
       {isLoading && !refreshing ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator color={Colors.primary} size="large" />
-        </View>
+        <ScrollView style={styles.list} contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
+          <CardListSkeleton />
+        </ScrollView>
       ) : (
         <ScrollView
           style={styles.list}
