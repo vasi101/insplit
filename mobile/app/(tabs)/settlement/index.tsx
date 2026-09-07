@@ -25,22 +25,7 @@ import { formatCurrency, formatDate } from '../../../src/utils/format';
 import { Spacing, BorderRadius, Shadows, ThemeColors } from '../../../constants/theme';
 import { useThemeColors } from '../../../src/store/theme.store';
 
-type ReportPeriod = 'DAY' | 'WEEK' | 'MONTH';
-
-function localDateKey(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
-
-function getPeriodKey(dateValue: string, period: ReportPeriod): string {
-  const date = new Date(dateValue);
-  if (period === 'DAY') return localDateKey(date);
-  if (period === 'MONTH') return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-  const weekStart = new Date(date);
-  const day = weekStart.getDay();
-  weekStart.setDate(weekStart.getDate() - (day === 0 ? 6 : day - 1));
-  weekStart.setHours(0, 0, 0, 0);
-  return localDateKey(weekStart);
-}
+import { ReportPeriod, localDateKey, getPeriodKey, reportDate, weekDates } from '../../../src/utils/expense-report';
 
 function formatPeriodLabel(key: string, period: ReportPeriod): string {
   if (period === 'MONTH') {
@@ -170,14 +155,10 @@ export default function SettlementScreen() {
       .map(([key, value]) => ({ key, ...value }));
   })();
   const totalSpent = transactions.reduce((sum, transaction) => sum + transaction.amount, 0);
-  const averageExpense = transactions.length > 0 ? totalSpent / transactions.length : 0;
-  const dailyChartRows = Array.from({ length: 7 }, (_, index) => {
-    const date = new Date();
-    date.setHours(0, 0, 0, 0);
-    date.setDate(date.getDate() - (6 - index));
+  const dailyChartRows = weekDates(selectedChartDay).map((date) => {
     const key = localDateKey(date);
     const dayTransactions = transactions.filter(
-      (transaction) => localDateKey(new Date(transaction.expenseDate)) === key
+      (transaction) => getPeriodKey(transaction.expenseDate, 'DAY') === key
     );
     return {
       key,
@@ -197,7 +178,9 @@ export default function SettlementScreen() {
     Colors.warning,
     Colors.primaryDark,
   ];
-  const currentPeriodKey = getPeriodKey(new Date().toISOString(), reportPeriod);
+  const currentPeriodKey = getPeriodKey(selectedChartDay, reportPeriod);
+  const periodExpense = reportRows.find((row) => row.key === currentPeriodKey)?.total ?? 0;
+  const periodExpenseLabel = reportPeriod === 'DAY' ? 'DAILY EXPENSE' : reportPeriod === 'WEEK' ? 'WEEKLY EXPENSE' : 'MONTHLY EXPENSE';
   const periodSpendingByMember = transactions.reduce<Record<string, number>>((result, transaction) => {
     if (getPeriodKey(transaction.expenseDate, reportPeriod) !== currentPeriodKey) return result;
     const payerId = typeof transaction.paidBy === 'string' ? transaction.paidBy : transaction.paidBy?._id;
@@ -208,7 +191,7 @@ export default function SettlementScreen() {
     ...balances.map((balance) => periodSpendingByMember[balance.userId] || 0),
     1
   );
-  const periodName = reportPeriod === 'DAY' ? 'today' : reportPeriod === 'WEEK' ? 'this week' : 'this month';
+  const periodName = formatPeriodLabel(currentPeriodKey, reportPeriod);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -313,9 +296,9 @@ export default function SettlementScreen() {
               <Text style={styles.metricFoot}>transactions</Text>
             </View>
             <View style={styles.metricCard}>
-              <Text style={styles.metricLabel}>AVERAGE</Text>
-              <Text style={styles.metricValueSmall}>{formatCurrency(averageExpense, balancesData?.currency)}</Text>
-              <Text style={styles.metricFoot}>per expense</Text>
+              <Text style={styles.metricLabel}>{periodExpenseLabel}</Text>
+              <Text style={styles.metricValueSmall}>{formatCurrency(periodExpense, balancesData?.currency)}</Text>
+              <Text style={styles.metricFoot}>{periodName}</Text>
             </View>
           </View>
           <View style={styles.reportTabs}>
@@ -334,9 +317,23 @@ export default function SettlementScreen() {
           <View style={styles.chartCard}>
             <View style={styles.chartHeader}>
               <View>
-                <Text style={styles.chartTitle}>Last 7 days</Text>
+                <Text style={styles.chartTitle}>Monday – Sunday</Text>
+                <Text style={styles.reportMeta}>{formatPeriodLabel(getPeriodKey(selectedChartDay, 'WEEK'), 'WEEK')}</Text>
               </View>
               <Text style={styles.chartHeaderTotal}>{formatCurrency(selectedDayReport.total, balancesData?.currency)}</Text>
+            </View>
+            <View style={styles.chartHeader}>
+              <TouchableOpacity accessibilityLabel="Previous week" onPress={() => {
+                const date = reportDate(selectedChartDay);
+                date.setDate(date.getDate() - 7);
+                setSelectedChartDay(localDateKey(date));
+              }}><Text style={styles.reportTabText}>‹ Previous week</Text></TouchableOpacity>
+              <TouchableOpacity onPress={() => setSelectedChartDay(localDateKey(new Date()))}><Text style={styles.reportTabText}>Today</Text></TouchableOpacity>
+              <TouchableOpacity accessibilityLabel="Next week" onPress={() => {
+                const date = reportDate(selectedChartDay);
+                date.setDate(date.getDate() + 7);
+                setSelectedChartDay(localDateKey(date));
+              }}><Text style={styles.reportTabText}>Next week ›</Text></TouchableOpacity>
             </View>
             <View style={styles.chartPlot}>
               {dailyChartRows.map((row, index) => {
