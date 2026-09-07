@@ -3,7 +3,7 @@ import { Transaction, ITransaction, TransactionCategory } from './transaction.mo
 import { Room } from '../rooms/room.model';
 import { createError } from '../../middleware/error.middleware';
 import { emitToRoom } from '../../sockets/socket.server';
-import { sendPushNotifications } from '../../notifications/push.service';
+import { sendPushNotifications, userPushTokens } from '../../notifications/push.service';
 import { User } from '../auth/auth.model';
 
 export interface CreateTransactionInput {
@@ -77,8 +77,8 @@ async function getRoomMemberPushTokens(roomId: string, excludeUserId: string): P
 
   if (memberIds.length === 0) return [];
 
-  const users = await User.find({ _id: { $in: memberIds } }).select('pushToken').lean();
-  return users.flatMap((user) => (user.pushToken ? [user.pushToken] : []));
+  const users = await User.find({ _id: { $in: memberIds } }).select('pushToken pushTokens').lean();
+  return users.flatMap(userPushTokens);
 }
 
 async function notifyTransactionCreated(
@@ -90,9 +90,9 @@ async function notifyTransactionCreated(
   if (pushTokens.length === 0 || !creator) return;
 
   await sendPushNotifications(pushTokens, {
-    title: 'New Expense Requires Verification',
-    body: `${creator.name} added ${input.currency ?? 'NPR'} ${input.amount} for ${input.title}. Tap to review.`,
-    data: { type: 'TRANSACTION_PENDING', transactionId: transaction._id.toString() },
+    title: 'New transaction',
+    body: `${creator.name} added ${!input.currency || input.currency === 'NPR' ? 'Rs.' : input.currency} ${input.amount} ? ${input.title}.`,
+    data: { type: 'TRANSACTION_PENDING', roomId: input.roomId, transactionId: transaction._id.toString() },
   });
 }
 
@@ -218,10 +218,10 @@ export async function approveTransaction(transactionId: string, verifierId: stri
   emitToRoom(transaction.roomId.toString(), 'transaction:approved', { transaction: populated });
 
   // Notify the creator
-  const creator = await User.findById(transaction.createdBy).select('pushToken name');
+  const creator = await User.findById(transaction.createdBy).select('pushToken pushTokens name');
   const verifier = await User.findById(verifierId).select('name');
-  if (creator?.pushToken && verifier) {
-    sendPushNotifications([creator.pushToken], {
+  if (creator && verifier) {
+    sendPushNotifications(userPushTokens(creator), {
       title: 'Expense Approved ✅',
       body: `${verifier.name} approved your expense: ${transaction.title}`,
       data: { type: 'TRANSACTION_APPROVED', transactionId: transactionId },
@@ -270,10 +270,10 @@ export async function rejectTransaction(
   emitToRoom(transaction.roomId.toString(), 'transaction:rejected', { transaction: populated });
 
   // Notify the creator
-  const creator = await User.findById(transaction.createdBy).select('pushToken');
+  const creator = await User.findById(transaction.createdBy).select('pushToken pushTokens');
   const verifier = await User.findById(verifierId).select('name');
-  if (creator?.pushToken && verifier) {
-    sendPushNotifications([creator.pushToken], {
+  if (creator && verifier) {
+    sendPushNotifications(userPushTokens(creator), {
       title: 'Expense Rejected ❌',
       body: `${verifier.name} rejected your expense: ${transaction.title}${reason ? ` — ${reason}` : ''}`,
       data: { type: 'TRANSACTION_REJECTED', transactionId: transactionId },

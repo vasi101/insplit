@@ -9,6 +9,8 @@ export interface IUser extends Document {
   profileImage?: string;
   phone?: string;
   pushToken?: string;
+  pushTokens: string[];
+  pushDevices: { token: string; channel: 'production' | 'development' }[];
   refreshToken?: string;
   emailVerified: boolean;
   isAdmin: boolean;
@@ -51,6 +53,8 @@ const UserSchema = new Schema<IUser>(
       maxlength: 24,
       default: null,
     },
+    pushTokens: { type: [String], default: [] },
+    pushDevices: { type: [{ _id: false, token: String, channel: String }], default: [] },
     pushToken: {
       type: String,
       default: null,
@@ -79,6 +83,9 @@ const UserSchema = new Schema<IUser>(
       transform(_doc, ret: Record<string, unknown>) {
         delete ret['passwordHash'];
         delete ret['refreshToken'];
+        delete ret['pushToken'];
+        delete ret['pushTokens'];
+        delete ret['pushDevices'];
         delete ret['emailVerificationCodeHash'];
         delete ret['emailVerificationExpiresAt'];
         delete ret['passwordResetCodeHash'];

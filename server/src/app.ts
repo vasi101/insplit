@@ -12,6 +12,7 @@ import settlementRoutes from './modules/settlements/settlement.routes';
 import uploadRoutes from './modules/uploads/upload.routes';
 import inventoryRoutes from './modules/inventory/inventory.routes';
 import adminRoutes from './modules/admin/admin.routes';
+import releaseRoutes from './modules/releases/release.routes';
 import { errorMiddleware, notFoundMiddleware } from './middleware/error.middleware';
 import { connectDatabase } from './config/database';
 
@@ -78,6 +79,7 @@ app.use('/api/settlements', settlementRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/releases', releaseRoutes);
 
 // ─── Static Web Admin App (Production Support) ──────────────────────────────
 const webDistPath = path.resolve(__dirname, '../../web/dist');

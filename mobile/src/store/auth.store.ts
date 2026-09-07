@@ -10,6 +10,7 @@ import {
   getCustomBaseUrl,
 } from '../utils/storage';
 import { connectSocket, disconnectSocket } from '../services/socket/socket.service';
+import { unregisterPushToken } from '../services/push-registration';
 
 interface AuthState {
   user: User | null;
@@ -103,6 +104,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   logout: async () => {
     set({ isLoading: true });
     try {
+      await unregisterPushToken().catch(error => console.warn('Push token removal failed:', error));
       await authApi.logout().catch(() => {});
     } finally {
       disconnectSocket();

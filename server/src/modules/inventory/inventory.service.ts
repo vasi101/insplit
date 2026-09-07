@@ -6,16 +6,16 @@ import { Room } from '../rooms/room.model';
 import { createError } from '../../middleware/error.middleware';
 import { User } from '../auth/auth.model';
 import { assertStockUnit } from './inventory.units';
-import { sendPushNotifications } from '../../notifications/push.service';
+import { sendPushNotifications, userPushTokens } from '../../notifications/push.service';
 
 async function notifyInventoryReview(roomId: string, userId: string, itemId: string, name: string, quantity: number, unit: string) {
   if (quantity <= 0) return;
   const room = await Room.findById(roomId).select('members').lean();
   if (!room) return;
   const recipients = room.members.filter(member => member.status === 'ACTIVE' && member.userId.toString() !== userId);
-  const users = await User.find({ _id: { $in: recipients.map(member => member.userId) } }).select('pushToken').lean();
+  const users = await User.find({ _id: { $in: recipients.map(member => member.userId) } }).select('pushToken pushTokens').lean();
   const creator = await User.findById(userId).select('name').lean();
-  await sendPushNotifications(users.flatMap(user => user.pushToken ? [user.pushToken] : []), {
+  await sendPushNotifications(users.flatMap(userPushTokens), {
     title: 'Inventory contribution needs verification',
     body: `${creator?.name ?? 'A roommate'} brought ${quantity} ${unit} of ${name}. Open Inventory to approve or reject.`,
     data: { type: 'INVENTORY_PENDING', roomId, itemId },

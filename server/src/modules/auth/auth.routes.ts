@@ -21,6 +21,7 @@ import {
   resetPasswordValidation,
 } from './auth.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
+import { User } from './auth.model';
 
 const router = Router();
 
@@ -39,5 +40,17 @@ router.post('/verify-password', authMiddleware, verifyPasswordValidation, verify
 router.get('/me', authMiddleware, getMe);
 router.patch('/me', authMiddleware, updateProfileValidation, updateProfile);
 router.patch('/push-token', authMiddleware, updatePushToken);
+router.delete('/push-token', authMiddleware, async (req, res, next) => {
+  const { pushToken } = req.body;
+  if (typeof pushToken !== 'string' || pushToken.length > 256) {
+    res.status(400).json({ success: false, message: 'Invalid push token' });
+    return;
+  }
+  try {
+    await User.updateOne({ _id: req.user!.userId }, { $pull: { pushTokens: pushToken, pushDevices: { token: pushToken } } });
+    await User.updateOne({ _id: req.user!.userId, pushToken }, { $unset: { pushToken: 1 } });
+    res.json({ success: true, data: null });
+  } catch (error) { next(error); }
+});
 
 export default router;
