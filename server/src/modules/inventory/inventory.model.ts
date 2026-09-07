@@ -1,7 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export type InventoryCategory = 'KITCHEN' | 'CLEANING' | 'BATHROOM' | 'PANTRY' | 'OTHER';
-export type InventoryUnit = 'kg' | 'L' | 'pcs' | 'packets' | 'boxes' | 'other';
+export type InventoryUnit = 'kg' | 'g' | 'L' | 'pcs' | 'packets' | 'boxes' | 'other';
 export type InventoryStatus = 'PENDING' | 'VERIFIED' | 'REJECTED';
 
 export interface IInventoryItem extends Document {
@@ -53,7 +53,7 @@ const InventoryItemSchema = new Schema<IInventoryItem>(
     },
     unit: {
       type: String,
-      enum: ['kg', 'L', 'pcs', 'packets', 'boxes', 'other'],
+      enum: ['kg', 'g', 'L', 'pcs', 'packets', 'boxes', 'other'],
       default: 'pcs',
     },
     minQuantity: {

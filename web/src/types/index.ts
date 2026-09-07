@@ -71,7 +71,7 @@ export interface Transaction {
 }
 
 export type InventoryCategory = 'KITCHEN' | 'CLEANING' | 'BATHROOM' | 'PANTRY' | 'OTHER';
-export type InventoryUnit = 'kg' | 'L' | 'pcs' | 'packets' | 'boxes' | 'other';
+export type InventoryUnit = 'kg' | 'g' | 'L' | 'pcs' | 'packets' | 'boxes' | 'other';
 
 export interface InventoryItem {
   _id: string;

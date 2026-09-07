@@ -4,6 +4,23 @@ import { emitToRoom } from '../../sockets/socket.server';
 import { serverCache } from '../../utils/cache';
 import { Room } from '../rooms/room.model';
 import { createError } from '../../middleware/error.middleware';
+import { User } from '../auth/auth.model';
+import { assertStockUnit } from './inventory.units';
+import { sendPushNotifications } from '../../notifications/push.service';
+
+async function notifyInventoryReview(roomId: string, userId: string, itemId: string, name: string, quantity: number, unit: string) {
+  if (quantity <= 0) return;
+  const room = await Room.findById(roomId).select('members').lean();
+  if (!room) return;
+  const recipients = room.members.filter(member => member.status === 'ACTIVE' && member.userId.toString() !== userId);
+  const users = await User.find({ _id: { $in: recipients.map(member => member.userId) } }).select('pushToken').lean();
+  const creator = await User.findById(userId).select('name').lean();
+  await sendPushNotifications(users.flatMap(user => user.pushToken ? [user.pushToken] : []), {
+    title: 'Inventory contribution needs verification',
+    body: `${creator?.name ?? 'A roommate'} brought ${quantity} ${unit} of ${name}. Open Inventory to approve or reject.`,
+    data: { type: 'INVENTORY_PENDING', roomId, itemId },
+  });
+}
 
 async function assertRoomMember(roomId: string, userId: string): Promise<void> {
   const room = await Room.findOne({
@@ -44,12 +61,14 @@ export async function getItemsByRoom(roomId: string, userId: string) {
 
 export async function addItem(userId: string, payload: CreateItemPayload) {
   await assertRoomMember(payload.roomId, userId);
+  const unit = payload.unit ?? (payload.name.trim().toLowerCase() === 'oil' ? 'L' : 'kg');
+  assertStockUnit(payload.name, unit, Number(payload.quantity));
   const item = await InventoryItem.create({
     roomId: new mongoose.Types.ObjectId(payload.roomId),
     name: payload.name,
     category: payload.category ?? 'OTHER',
     quantity: payload.quantity,
-    unit: payload.unit ?? 'pcs',
+    unit,
     minQuantity: payload.minQuantity,
     addedBy: new mongoose.Types.ObjectId(userId),
     lastUpdatedBy: new mongoose.Types.ObjectId(userId),
@@ -67,6 +86,8 @@ export async function addItem(userId: string, payload: CreateItemPayload) {
 
   // Real-time broadcast to room members and admin dashboard
   emitToRoom(payload.roomId, 'inventory:created', { item: populated });
+  void notifyInventoryReview(payload.roomId, userId, item._id.toString(), item.name, item.quantity, item.unit)
+    .catch(error => console.error('Failed to notify roommates about inventory:', error));
 
   return populated;
 }
@@ -80,6 +101,9 @@ export async function updateItem(itemId: string, userId: string, payload: Update
   }
 
   const update: Record<string, unknown> = { lastUpdatedBy: new mongoose.Types.ObjectId(userId) };
+  if (payload.name !== undefined || payload.unit !== undefined || payload.quantity !== undefined) {
+    assertStockUnit(payload.name ?? existing.name, payload.unit ?? existing.unit, Number(payload.quantity ?? existing.quantity));
+  }
 
   if (payload.name !== undefined) update.name = payload.name;
   if (payload.category !== undefined) update.category = payload.category;
@@ -105,6 +129,8 @@ export async function updateItem(itemId: string, userId: string, payload: Update
     serverCache.del(`inventory:room:${item.roomId.toString()}`);
     serverCache.delPattern('admin:');
     emitToRoom(item.roomId.toString(), 'inventory:updated', { item });
+    void notifyInventoryReview(item.roomId.toString(), userId, item._id.toString(), item.name, item.quantity, item.unit)
+      .catch(error => console.error('Failed to notify roommates about inventory:', error));
   }
 
   return item;
@@ -142,15 +168,20 @@ export async function reviewItem(
     throw createError(`Item is already ${item.status}`, 409, 'ALREADY_PROCESSED');
   }
 
-  item.status = decision === 'APPROVED' ? 'VERIFIED' : 'REJECTED';
-  item.verification = {
+  const verification = {
     verifiedBy: new mongoose.Types.ObjectId(userId),
     decision,
     reason,
     verifiedAt: new Date(),
   };
-  await item.save();
-  const populated = await item.populate([
+  // Only one roommate can complete a review, and never review a concurrently edited entry.
+  const reviewed = await InventoryItem.findOneAndUpdate(
+    { _id: itemId, isActive: true, status: 'PENDING', updatedAt: item.updatedAt },
+    { $set: { status: decision === 'APPROVED' ? 'VERIFIED' : 'REJECTED', verification } },
+    { new: true, runValidators: true }
+  );
+  if (!reviewed) throw createError('This contribution changed. Refresh before reviewing.', 409, 'ALREADY_PROCESSED');
+  const populated = await reviewed.populate([
     { path: 'addedBy', select: 'name profileImage' },
     { path: 'lastUpdatedBy', select: 'name profileImage' },
     { path: 'verification.verifiedBy', select: 'name profileImage' },
