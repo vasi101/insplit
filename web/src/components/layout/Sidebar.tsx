@@ -2,6 +2,7 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
+  BarChart3,
   Users,
   Receipt,
   Home,
@@ -16,7 +17,8 @@ export function Sidebar() {
   const { user, logout } = useAuth();
 
   const links = [
-    { to: '/', label: 'Overview & Analytics', icon: LayoutDashboard },
+    { to: '/', label: 'Overview', icon: LayoutDashboard },
+    { to: '/analytics', label: 'Detailed Analytics', icon: BarChart3 },
     { to: '/users', label: 'User Directory', icon: Users },
     { to: '/transactions', label: 'Transactions & Audit', icon: Receipt },
     { to: '/rooms', label: 'Rooms & Flats', icon: Home },

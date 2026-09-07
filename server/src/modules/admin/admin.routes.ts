@@ -24,6 +24,7 @@ import {
 } from './admin.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
 import { adminMiddleware } from '../../middleware/admin.middleware';
+import { getAnalytics } from './analytics.controller';
 
 const router = Router();
 
@@ -32,6 +33,7 @@ router.use(authMiddleware, adminMiddleware);
 
 // Analytics
 router.get('/stats', getDashboardStats);
+router.get('/analytics', getAnalytics);
 
 // Users
 router.get('/users', getAllUsers);

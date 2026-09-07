@@ -350,3 +350,8 @@ export async function updateInventoryItem(itemId: string, data: Partial<Inventor
 export async function deleteInventoryItem(itemId: string) {
   await api.delete(`/admin/inventory/${itemId}`);
 }
+
+export async function fetchAnalytics(params: import('../types/analytics').AnalyticsQuery, signal?: AbortSignal): Promise<import('../types/analytics').AnalyticsData> {
+  const res = await api.get<ApiResponse<import('../types/analytics').AnalyticsData>>('/admin/analytics', { params, signal });
+  return res.data.data!;
+}
