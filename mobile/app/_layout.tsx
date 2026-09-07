@@ -5,6 +5,10 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuthStore } from '../src/store/auth.store';
 import { useRoomStore } from '../src/store/room.store';
 import { useThemeColors, useThemeStore } from '../src/store/theme.store';
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
+import { isDevice } from 'expo-device';
+import { updatePushToken } from '../src/services/api/auth.api';
 
 export default function RootLayout() {
   const initializeAuth = useAuthStore((state) => state.initialize);
@@ -27,6 +31,27 @@ export default function RootLayout() {
       fetchRooms();
     }
   }, [isAuthenticated, fetchRooms]);
+
+  useEffect(() => {
+    if (!isAuthenticated || Platform.OS === 'web' || !isDevice || Constants.appOwnership === 'expo') return;
+    let cancelled = false;
+    void (async () => {
+      const notifications = await import('expo-notifications');
+      if (Platform.OS === 'android') {
+        await notifications.setNotificationChannelAsync('default', {
+          name: 'Room updates', importance: notifications.AndroidImportance.HIGH,
+        });
+      }
+      let permission = await notifications.getPermissionsAsync();
+      if (permission.status !== 'granted') permission = await notifications.requestPermissionsAsync();
+      if (permission.status !== 'granted' || cancelled) return;
+      const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+      if (!projectId) return;
+      const token = await notifications.getExpoPushTokenAsync({ projectId });
+      if (!cancelled) await updatePushToken(token.data);
+    })().catch(error => console.warn('Could not register room notifications:', error));
+    return () => { cancelled = true; };
+  }, [isAuthenticated]);
 
   return (
     <SafeAreaProvider>

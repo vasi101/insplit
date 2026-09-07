@@ -15,7 +15,7 @@ export const addItemValidation = [
   body('quantity').isFloat({ min: 0 }).withMessage('Quantity must be a non-negative number'),
   body('unit')
     .optional()
-    .isIn(['kg', 'L', 'pcs', 'packets', 'boxes', 'other'])
+    .isIn(['kg', 'g', 'L', 'pcs', 'packets', 'boxes', 'other'])
     .withMessage('Invalid unit'),
   body('minQuantity').optional({ nullable: true }).isFloat({ min: 0 }),
 ];
@@ -27,7 +27,7 @@ export const updateItemValidation = [
     .optional()
     .isIn(['KITCHEN', 'CLEANING', 'BATHROOM', 'PANTRY', 'OTHER']),
   body('quantity').optional().isFloat({ min: 0 }),
-  body('unit').optional().isIn(['kg', 'L', 'pcs', 'packets', 'boxes', 'other']),
+  body('unit').optional().isIn(['kg', 'g', 'L', 'pcs', 'packets', 'boxes', 'other']),
   body('minQuantity').optional({ nullable: true }).isFloat({ min: 0 }),
 ];
 
