@@ -63,5 +63,5 @@ export async function updateProfile(payload: { name?: string; profileImage?: str
 }
 
 export async function updatePushToken(pushToken: string): Promise<void> {
-  await apiClient.patch<ApiResponse<null>>('/auth/push-token', { pushToken });
+  await apiClient.patch<ApiResponse<null>>('/auth/push-token', { pushToken, channel: __DEV__ ? 'development' : 'production' });
 }

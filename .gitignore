@@ -14,6 +14,12 @@ node_modules/
 !.env.example
 !**/.env.example
 
+# Firebase service-account keys and exported EAS credentials
+**/*firebase-adminsdk*.json
+**/credentials.json
+*.p12
+*.pfx
+
 # Production & Build outputs
 dist/
 **/dist/
@@ -53,3 +59,11 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Local Android configuration
+**/google-services.json
+**/google-services (*).json
+**/local.properties
+**/.gradle/
+**/.cxx/
+**/.kotlin/

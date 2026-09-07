@@ -160,12 +160,16 @@ export async function getMe(req: Request, res: Response, next: NextFunction): Pr
 
 export async function updatePushToken(req: Request, res: Response, next: NextFunction): Promise<void> {
   const { pushToken } = req.body;
-  if (!pushToken) {
+  if (typeof pushToken !== 'string' || !/^(ExponentPushToken|ExpoPushToken)\[[\w-]+\]$/.test(pushToken) || pushToken.length > 256) {
     res.status(400).json(errorResponse('VALIDATION_ERROR', 'pushToken is required'));
     return;
   }
   try {
-    await authService.updatePushToken(req.user!.userId, pushToken);
+    if (req.body.channel !== undefined && !['production', 'development'].includes(req.body.channel)) {
+      res.status(400).json(errorResponse('VALIDATION_ERROR', 'Invalid release channel'));
+      return;
+    }
+    await authService.updatePushToken(req.user!.userId, pushToken, req.body.channel);
     res.status(200).json(successResponse(null, 'Push token updated'));
   } catch (error) {
     next(error);

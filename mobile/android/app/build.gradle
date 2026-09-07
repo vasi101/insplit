@@ -92,8 +92,8 @@ android {
         applicationId 'com.insplit.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0.0"
+        versionCode = (findProperty("insplit.versionCode") ?: "1").toInteger()
+        versionName = (findProperty("insplit.versionName") ?: "1.0.0")
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
@@ -107,6 +107,7 @@ android {
     }
     buildTypes {
         debug {
+            applicationIdSuffix ".debug"
             signingConfig signingConfigs.debug
         }
         release {
@@ -179,4 +180,9 @@ dependencies {
     } else {
         implementation jscFlavor
     }
+}
+
+// Firebase config is supplied locally, separately for each application ID.
+if (file("google-services.json").exists() || file("src/debug/google-services.json").exists() || file("src/release/google-services.json").exists()) {
+    apply plugin: "com.google.gms.google-services"
 }

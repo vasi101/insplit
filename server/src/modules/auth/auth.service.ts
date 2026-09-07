@@ -182,8 +182,11 @@ export async function verifyUserPassword(userId: string, password: string): Prom
   }
 }
 
-export async function updatePushToken(userId: string, pushToken: string): Promise<void> {
-  await User.findByIdAndUpdate(userId, { pushToken });
+export async function updatePushToken(userId: string, pushToken: string, channel: 'production' | 'development' = 'production'): Promise<void> {
+  // A device belongs to the currently signed-in account only.
+  await User.updateMany({ _id: { $ne: userId } }, { $pull: { pushTokens: pushToken, pushDevices: { token: pushToken } } });
+  await User.updateMany({ pushToken }, { $unset: { pushToken: 1 } });
+  await User.findByIdAndUpdate(userId, { $addToSet: { pushTokens: pushToken, pushDevices: { token: pushToken, channel } } });
 }
 
 export async function getUserById(userId: string): Promise<IUser | null> {
