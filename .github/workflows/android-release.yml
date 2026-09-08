@@ -37,25 +37,38 @@ jobs:
       - name: Make Gradle executable
         run: chmod +x mobile/android/gradlew
 
-      - name: Generate debug keystore
+      - name: Restore permanent signing key
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          keytool -genkeypair \
-            -v \
-            -keystore mobile/android/app/debug.keystore \
-            -storepass android \
-            -alias androiddebugkey \
-            -keypass android \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -dname "CN=Android Debug,O=Android,C=US"
+          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing permanent signing secret: $name"
+              exit 1
+            fi
+          done
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/insplit-release.keystore"
 
       - name: Build release APK
         working-directory: mobile/android
         env:
           NODE_ENV: production
-          EXPO_PUBLIC_API_URL: ${{ secrets.EXPO_PUBLIC_API_URL }}
-        run: ./gradlew assembleRelease
+          EXPO_PUBLIC_PRODUCTION_API_URL: https://insplit-server.onrender.com
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/insplit-release.keystore
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          version="${GITHUB_REF_NAME#android-v}"
+          if [[ ! "$version" =~ ^([0-9]{1,2})\.([0-9]{1,2})\.([0-9]{1,2})$ ]]; then
+            echo "::error::Expected android-vMAJOR.MINOR.PATCH (each part 0-99)"
+            exit 1
+          fi
+          code=$((10#${BASH_REMATCH[1]} * 10000 + 10#${BASH_REMATCH[2]} * 100 + 10#${BASH_REMATCH[3]}))
+          ./gradlew assembleRelease "-Pinsplit.versionName=$version" "-Pinsplit.versionCode=$code"
 
       - name: Rename APK
         run: |
