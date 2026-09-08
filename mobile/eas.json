@@ -11,13 +11,13 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_PRODUCTION_API_URL": "https://insplit-wine.vercel.app"
+        "EXPO_PUBLIC_PRODUCTION_API_URL": "https://insplit-server.onrender.com"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_PRODUCTION_API_URL": "https://insplit-wine.vercel.app"
+        "EXPO_PUBLIC_PRODUCTION_API_URL": "https://insplit-server.onrender.com"
       }
     }
   },

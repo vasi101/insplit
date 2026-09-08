@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -7,9 +7,11 @@ import {
   RefreshControl,
   TouchableOpacity,
   Modal,
+  AppState,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { connectSocket, subscribeSocketConnect } from '../../../src/services/socket/socket.service';
 import { useAuthStore } from '../../../src/store/auth.store';
 import { useRoomStore } from '../../../src/store/room.store';
 import { useFeedStore, FeedFilter } from '../../../src/store/feed.store';
@@ -54,6 +56,28 @@ export default function FeedScreen() {
       fetchFeed(currentRoom._id, 1);
     }
   }, [currentRoom, fetchFeed]);
+
+  useFocusEffect(useCallback(() => {
+    if (!currentRoom) return;
+    const sync = () => {
+      const feed = useFeedStore.getState();
+      if (AppState.currentState !== 'active' || feed.isLoading || feed.isRefreshing) return;
+      void fetchFeed(currentRoom._id, 1, true);
+    };
+    const resume = () => {
+      sync();
+      void connectSocket().catch(error => console.warn('Socket reconnect failed:', error));
+    };
+    const unsubscribe = subscribeSocketConnect(sync);
+    resume();
+    const listener = AppState.addEventListener('change', state => {
+      if (state === 'active') resume();
+    });
+    return () => {
+      unsubscribe();
+      listener.remove();
+    };
+  }, [currentRoom?._id, fetchFeed]));
 
   const onRefresh = () => {
     if (currentRoom) {

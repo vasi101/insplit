@@ -38,7 +38,14 @@
           "faceIDPermission": "Allow Insplit to use Face ID for secure login."
         }
       ],
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "sounds": [
+            "./assets/sounds/insplit_chime.wav"
+          ]
+        }
+      ],
       [
         "expo-image-picker",
         {

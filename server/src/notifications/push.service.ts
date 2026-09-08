@@ -24,8 +24,8 @@ export async function sendPushNotifications(
 
   const messages: ExpoPushMessage[] = validTokens.map((token) => ({
     to: token,
-    sound: 'default',
-    channelId: 'default',
+    sound: 'insplit_chime.wav',
+    channelId: 'insplit-chime-v1',
     title: payload.title,
     body: payload.body,
     data: payload.data,
