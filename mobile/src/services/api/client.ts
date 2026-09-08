@@ -1,5 +1,6 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { API_CONFIG } from '../../../constants/api';
+import { connectSocket } from '../socket/socket.service';
 import { getAccessToken, getRefreshToken, saveTokens, clearTokens, getCustomBaseUrl } from '../../utils/storage';
 
 export const apiClient = axios.create({
@@ -88,6 +89,8 @@ apiClient.interceptors.response.use(
 
         const { tokens } = response.data.data;
         await saveTokens(tokens.accessToken, tokens.refreshToken);
+        // Authentication failures stop Socket.IO retries; restart with the fresh token.
+        void connectSocket().catch(error => console.warn('Socket reconnect failed:', error));
 
         processQueue(null, tokens.accessToken);
         if (originalRequest.headers) {

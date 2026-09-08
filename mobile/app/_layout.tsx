@@ -53,8 +53,10 @@ export default function RootLayout() {
         }) });
         if (!tokenListener) tokenListener = notifications.addPushTokenListener(() => { void register(); });
         if (Platform.OS === 'android') {
-          await notifications.setNotificationChannelAsync('default', {
+          // A new ID is required because Android cannot change an existing channel's sound.
+          await notifications.setNotificationChannelAsync('insplit-chime-v1', {
             name: 'Room updates', importance: notifications.AndroidImportance.HIGH,
+            sound: 'insplit_chime.wav',
           });
         }
         let permission = await notifications.getPermissionsAsync();

@@ -26,7 +26,8 @@ test('deduplicates devices and removes the correct invalid token in the second c
   const tokens = Array.from({ length: 101 }, (_, i) => `ExpoPushToken[${i}]`);
   await service.sendPushNotifications([...tokens, tokens[0], 'invalid'], { title: 'Expense', body: 'Test', data: { transactionId: 'abc' } });
   assert.equal(service.sent.length, 101);
-  assert.equal(service.sent[0].channelId, 'default');
+  assert.equal(service.sent[0].channelId, 'insplit-chime-v1');
+  assert.equal(service.sent[0].sound, 'insplit_chime.wav');
   assert.equal(service.removed[0][1].$pull.pushTokens, tokens[100]);
   assert.deepEqual(service.sent[0].data, { transactionId: 'abc' });
 });

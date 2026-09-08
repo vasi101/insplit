@@ -7,7 +7,7 @@ const DEV_API_URL = normalizeUrl(process.env.EXPO_PUBLIC_DEV_API_URL);
 const PRODUCTION_API_URL = normalizeUrl(process.env.EXPO_PUBLIC_PRODUCTION_API_URL)
   // Backward compatibility for existing mobile/.env and hosted Expo variables.
   || normalizeUrl(process.env.EXPO_PUBLIC_API_URL)
-  || 'https://insplit-wine.vercel.app';
+  || 'https://insplit-server.onrender.com';
 
 function getDevApiUrl(): string {
   // Expo hostUri example: "192.168.18.21:8081"

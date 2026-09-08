@@ -9,6 +9,7 @@
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "build:android:debug": "cd android && gradlew.bat :app:assembleDebug --no-daemon",
+    "build:android:debug:standalone": "cd android && gradlew.bat :app:assembleDebug -Pinsplit.standaloneDebug=true --no-daemon",
     "build:android:release": "cd android && gradlew.bat :app:assembleRelease --no-daemon"
   },
   "dependencies": {

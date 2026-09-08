@@ -5,6 +5,18 @@ import { Transaction, Settlement, InventoryItem } from '../../types';
 
 let socket: Socket | null = null;
 let activeRoomId: string | null = null;
+let connectionAttempt: Promise<Socket | null> | null = null;
+let connectionGeneration = 0;
+const connectListeners = new Set<() => void>();
+
+export function subscribeSocketConnect(listener: () => void): () => void {
+  connectListeners.add(listener);
+  return () => { connectListeners.delete(listener); };
+}
+
+export function isSocketConnected(): boolean {
+  return !!socket?.connected;
+}
 
 export interface SocketEventHandlers {
   onTransactionCreated?: (transaction: Transaction) => void;
@@ -25,22 +37,39 @@ export function registerSocketHandlers(newHandlers: SocketEventHandlers): void {
   handlers = { ...handlers, ...newHandlers };
 }
 
-export async function connectSocket(): Promise<Socket | null> {
+export function connectSocket(): Promise<Socket | null> {
+  if (connectionAttempt) return connectionAttempt;
+  const attempt = createSocket(connectionGeneration);
+  connectionAttempt = attempt;
+  void attempt.finally(() => {
+    if (connectionAttempt === attempt) connectionAttempt = null;
+  }).catch(() => {});
+  return attempt;
+}
+
+async function createSocket(generation: number): Promise<Socket | null> {
   const token = await getAccessToken();
   if (!token) return null;
 
-  if (socket?.connected) return socket;
+  if (generation !== connectionGeneration) return null;
+  if (socket) {
+    if (!socket.connected && !socket.active) socket.connect();
+    return socket;
+  }
 
   const customUrl = await getCustomBaseUrl();
   const base = API_CONFIG.HAS_ENV_OVERRIDE
     ? API_CONFIG.BASE_URL
     : (customUrl?.trim().replace(/\/+$/, '') || API_CONFIG.BASE_URL);
 
+  if (generation !== connectionGeneration) return null;
   socket = io(base, {
-    auth: { token },
-    transports: ['websocket', 'polling'],
+    auth: (callback) => {
+      void getAccessToken().then(token => callback({ token })).catch(() => callback({ token: null }));
+    },
+    transports: ['polling', 'websocket'],
     reconnection: true,
-    reconnectionAttempts: 10,
+    reconnectionAttempts: Infinity,
     reconnectionDelay: 1000,
   });
 
@@ -49,6 +78,11 @@ export async function connectSocket(): Promise<Socket | null> {
     if (activeRoomId) {
       joinSocketRoom(activeRoomId);
     }
+    connectListeners.forEach(listener => listener());
+  });
+
+  socket.on('connect_error', (error) => {
+    console.warn('Socket connection failed:', error.message);
   });
 
   socket.on('disconnect', () => {
@@ -98,6 +132,7 @@ export async function connectSocket(): Promise<Socket | null> {
 }
 
 export function joinSocketRoom(roomId: string): void {
+  if (activeRoomId && activeRoomId !== roomId) leaveSocketRoom(activeRoomId);
   activeRoomId = roomId;
   if (socket?.connected) {
     socket.emit('join:room', roomId);
@@ -114,6 +149,8 @@ export function leaveSocketRoom(roomId: string): void {
 }
 
 export function disconnectSocket(): void {
+  connectionGeneration += 1;
+  connectionAttempt = null;
   if (socket) {
     socket.disconnect();
     socket = null;

@@ -20,7 +20,7 @@ export function getApiBaseUrl(): string {
   }
   // Default to production Vercel backend if not on local dev server
   if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-    return 'https://insplit-wine.vercel.app/api';
+    return 'https://insplit-server.onrender.com/api';
   }
   return 'http://localhost:5000/api';
 }
