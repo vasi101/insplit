@@ -124,7 +124,7 @@ api.interceptors.response.use(
       } catch (refreshErr) {
         processQueue(refreshErr, null);
         clearStoredTokens();
-        window.location.href = '/login';
+        window.location.href = '/ad/login';
         return Promise.reject(refreshErr);
       } finally {
         isRefreshing = false;
@@ -135,7 +135,7 @@ api.interceptors.response.use(
   }
 );
 
-// ─── API Methods ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ API Methods â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // Auth
 export async function adminLogin(email: string, password: string) {

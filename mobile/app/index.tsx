@@ -19,13 +19,13 @@ export default function Index() {
       <View style={styles.orbitSmall} />
       <View style={styles.logoFrame}>
         <Image
-          source={require('../assets/icon-insplit-balance.png')}
+          source={require('../assets/icon-insplit.png')}
           style={styles.logo}
           resizeMode="contain"
         />
       </View>
       <Text style={styles.brandName}>Insplit</Text>
-      <ActivityIndicator style={styles.loader} size="small" color="#8EA2FF" />
+      <ActivityIndicator style={styles.loader} size="small" color="#7470CF" />
     </View>
   );
 }
@@ -33,7 +33,7 @@ export default function Index() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#080D22',
+    backgroundColor: '#E0DBEE',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -44,7 +44,7 @@ const styles = StyleSheet.create({
     height: 340,
     borderRadius: 170,
     borderWidth: 1,
-    borderColor: 'rgba(142,162,255,0.12)',
+    borderColor: 'rgba(116,112,207,0.12)',
   },
   orbitSmall: {
     position: 'absolute',
@@ -52,17 +52,17 @@ const styles = StyleSheet.create({
     height: 250,
     borderRadius: 125,
     borderWidth: 1,
-    borderColor: 'rgba(76,201,240,0.12)',
+    borderColor: 'rgba(116,112,207,0.12)',
   },
   logoFrame: {
     width: 108,
     height: 108,
     borderRadius: 30,
-    backgroundColor: '#10165B',
+    backgroundColor: '#E0DBEE',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 22,
-    shadowColor: '#4361EE',
+    shadowColor: '#7470CF',
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.35,
     shadowRadius: 22,
@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
     borderRadius: 27,
   },
   brandName: {
-    color: '#F8FAFC',
+    color: '#242625',
     fontSize: 36,
     fontWeight: '900',
     letterSpacing: -1.2,

@@ -17,12 +17,12 @@ export function Sidebar() {
   const { user, logout } = useAuth();
 
   const links = [
-    { to: '/', label: 'Overview', icon: LayoutDashboard },
-    { to: '/analytics', label: 'Detailed Analytics', icon: BarChart3 },
-    { to: '/users', label: 'User Directory', icon: Users },
-    { to: '/transactions', label: 'Transactions & Audit', icon: Receipt },
-    { to: '/rooms', label: 'Rooms & Flats', icon: Home },
-    { to: '/inventory', label: 'Inventory Hub', icon: Boxes },
+    { to: '/ad', label: 'Overview', icon: LayoutDashboard },
+    { to: '/ad/analytics', label: 'Detailed Analytics', icon: BarChart3 },
+    { to: '/ad/users', label: 'User Directory', icon: Users },
+    { to: '/ad/transactions', label: 'Transactions & Audit', icon: Receipt },
+    { to: '/ad/rooms', label: 'Rooms & Flats', icon: Home },
+    { to: '/ad/inventory', label: 'Inventory Hub', icon: Boxes },
   ];
 
   return (
@@ -89,6 +89,7 @@ export function Sidebar() {
             <NavLink
               key={link.to}
               to={link.to}
+              end={link.to === '/ad'}
               style={({ isActive }) => ({
                 display: 'flex',
                 alignItems: 'center',

@@ -54,7 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     clearStoredTokens();
     setUser(null);
-    window.location.href = '/login';
+    window.location.href = '/ad/login';
   };
 
   const refreshProfile = async () => {

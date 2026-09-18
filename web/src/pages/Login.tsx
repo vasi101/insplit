@@ -59,7 +59,7 @@ export function Login() {
 
     try {
       await login(email.trim().toLowerCase(), password);
-      navigate('/');
+      navigate('/ad');
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Authentication failed. Please check credentials.');
     } finally {

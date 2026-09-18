@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Insplit",
-    "icon": "./assets/icon-insplit-balance.png",
+    "icon": "./assets/icon-insplit.png",
     "slug": "insplit",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -9,7 +9,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.insplit.app",
-      "icon": "./assets/icon-insplit-balance.png"
+      "icon": "./assets/icon-insplit.png"
     },
     "android": {
       "package": "com.insplit.app",
@@ -20,14 +20,15 @@
         "android.permission.USE_FINGERPRINT"
       ],
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon-insplit-balance.png",
-        "backgroundColor": "#10165B"
+        "foregroundImage": "./assets/icon-insplit-foreground.png",
+        "monochromeImage": "./assets/icon-insplit-monochrome.png",
+        "backgroundColor": "#E0DBEE"
       }
     },
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/icon-insplit-balance.png"
+      "favicon": "./assets/icon-insplit.png"
     },
     "plugins": [
       "expo-router",
@@ -58,13 +59,13 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#10165B",
-          "image": "./assets/icon-insplit-balance.png",
+          "backgroundColor": "#E0DBEE",
+          "image": "./assets/splash-insplit.png",
           "imageWidth": 128,
           "resizeMode": "contain",
           "dark": {
-            "backgroundColor": "#10165B",
-            "image": "./assets/icon-insplit-balance.png"
+            "backgroundColor": "#E0DBEE",
+            "image": "./assets/splash-insplit.png"
           }
         }
       ]
