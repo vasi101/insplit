@@ -1,21 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
+import { Menu, X } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 
 export function Layout() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', width: '100%' }}>
-      <Sidebar />
-      <main
-        style={{
-          flex: 1,
-          marginLeft: '260px',
-          padding: '32px 36px 60px',
-          maxWidth: '1600px',
-          width: 'calc(100% - 260px)',
-          minHeight: '100vh',
-        }}
+    <div className="admin-shell">
+      <button
+        className="admin-menu-button btn btn-secondary btn-icon"
+        type="button"
+        aria-label={sidebarOpen ? 'Close navigation' : 'Open navigation'}
+        aria-expanded={sidebarOpen}
+        onClick={() => setSidebarOpen(!sidebarOpen)}
       >
+        {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
+      </button>
+      <Sidebar isOpen={sidebarOpen} onNavigate={() => setSidebarOpen(false)} />
+      {sidebarOpen && <button className="admin-sidebar-backdrop" aria-label="Close navigation" onClick={() => setSidebarOpen(false)} />}
+      <main className="admin-main">
         <Outlet />
       </main>
     </div>

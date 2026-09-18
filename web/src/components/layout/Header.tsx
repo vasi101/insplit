@@ -20,6 +20,7 @@ export function Header({ title, subtitle, onRefresh, isRefreshing }: HeaderProps
 
   return (
     <header
+      className="admin-header"
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -27,7 +28,7 @@ export function Header({ title, subtitle, onRefresh, isRefreshing }: HeaderProps
         marginBottom: '28px',
       }}
     >
-      <div>
+      <div className="admin-header-copy">
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
             {title}
@@ -57,7 +58,7 @@ export function Header({ title, subtitle, onRefresh, isRefreshing }: HeaderProps
         )}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <div className="admin-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         {onRefresh && (
           <button
             onClick={handleRefresh}

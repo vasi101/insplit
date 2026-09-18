@@ -13,7 +13,12 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
-export function Sidebar() {
+interface SidebarProps {
+  isOpen?: boolean;
+  onNavigate?: () => void;
+}
+
+export function Sidebar({ isOpen = false, onNavigate }: SidebarProps) {
   const { user, logout } = useAuth();
 
   const links = [
@@ -28,6 +33,7 @@ export function Sidebar() {
   return (
     <aside
       className="glass-panel"
+      data-open={isOpen}
       style={{
         width: '260px',
         height: '100vh',
@@ -90,6 +96,7 @@ export function Sidebar() {
               key={link.to}
               to={link.to}
               end={link.to === '/ad'}
+              onClick={onNavigate}
               style={({ isActive }) => ({
                 display: 'flex',
                 alignItems: 'center',
