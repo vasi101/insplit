@@ -54,6 +54,17 @@ immediate server-side removal. Other devices stay registered.
 
 ## Releases
 
+GitHub Actions releases require a repository Actions secret named
+`GOOGLE_SERVICES_JSON` containing the raw contents (not base64) of the production
+`google-services.json`. Use the Firebase Android client for `com.insplit.app`.
+The workflow validates and restores this ignored file before building, and stops
+if it is missing or invalid. Without this step a clean checkout could produce an
+APK without Firebase initialization and Android push registration would fail.
+The FCM v1 service-account credential must also be configured in Expo as above.
+After correcting this configuration, build and install a new release APK, allow
+notifications, and sign in/open the app to register its push token. Existing APKs
+cannot gain the missing native Firebase configuration through a server update.
+
 Build production locally from `mobile/android`:
 
 ```powershell

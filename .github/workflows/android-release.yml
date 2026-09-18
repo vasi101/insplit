@@ -37,6 +37,11 @@ jobs:
       - name: Make Gradle executable
         run: chmod +x mobile/android/gradlew
 
+      - name: Restore Firebase configuration for push notifications
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: node mobile/scripts/restore-firebase-config.cjs
+
       - name: Restore permanent signing key
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
