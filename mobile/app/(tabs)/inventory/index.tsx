@@ -42,8 +42,8 @@ export default function InventoryScreen() {
     });
     const pending = roomItems.filter(item => item.status === 'PENDING' && item.quantity > 0);
     const actualName = name === 'Other' ? custom.trim() : name;
-    useEffect(() => { setVisible(false); setFilter('All'); if (currentRoom)
-        void fetchItems(currentRoom._id); }, [currentRoom?._id, fetchItems]);
+    useEffect(() => { setVisible(false); setEditing(null); setFormError(''); setFilter('All'); if (currentRoom && user)
+        void fetchItems(currentRoom._id); }, [currentRoom?._id, user?._id, fetchItems]);
     const refresh = async () => { if (!currentRoom)
         return; setRefreshing(true); try {
         await fetchItems(currentRoom._id);

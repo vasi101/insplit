@@ -2,6 +2,7 @@ import { Server as HttpServer } from 'http';
 import { Server as SocketIOServer, Socket } from 'socket.io';
 import { verifyAccessToken } from '../utils/jwt';
 import { env } from '../config/env';
+import { Room } from '../modules/rooms/room.model';
 
 let io: SocketIOServer | null = null;
 
@@ -40,21 +41,31 @@ export function initSocketServer(httpServer: HttpServer): SocketIOServer {
     }
 
     // Client joins a room channel
-    socket.on('join:room', (roomId: string) => {
-      if (roomId) {
-        socket.join(`room:${roomId}`);
-        console.log(`👤 User ${socket.userId} joined room channel: room:${roomId}`);
+    let roomJoinVersion = 0;
+    socket.on('join:room', async (roomId: string) => {
+      const version = ++roomJoinVersion;
+      if (typeof roomId !== 'string' || !/^[a-f0-9]{24}$/i.test(roomId)) return;
+      try {
+        const member = await Room.exists({
+          _id: roomId,
+          members: { $elemMatch: { userId: socket.userId, status: 'ACTIVE' } },
+        });
+        if (!member || !socket.connected || version !== roomJoinVersion) return;
+        await socket.join(`room:${roomId}`);
+      } catch (error) {
+        console.error('Failed to authorize room subscription:', error);
       }
     });
 
     socket.on('leave:room', (roomId: string) => {
+      roomJoinVersion += 1;
       if (roomId) {
         socket.leave(`room:${roomId}`);
       }
     });
 
     socket.on('join:admin', () => {
-      socket.join('admin:channel');
+      if (socket.isAdmin) socket.join('admin:channel');
     });
 
     socket.on('disconnect', () => {
