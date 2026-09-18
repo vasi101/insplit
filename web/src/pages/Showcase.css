@@ -17,7 +17,7 @@
 .lp button { font: inherit; cursor: pointer; }
 .lp a:focus-visible, .lp button:focus-visible, .lp summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 5px; }
 .lp [id] { scroll-margin-top: 32px; }
-.lp-wrap { width: min(1200px, calc(100% - 96px)); margin-inline: auto; }
+.lp-wrap { width: min(1440px, calc(100% - 64px)); margin-inline: auto; }
 .lp-skip { position: fixed; top: -100px; left: 16px; z-index: 30; padding: 12px; background: var(--surface); }
 .lp-skip:focus { top: 16px; }
 .lp-header { display: flex; align-items: center; justify-content: space-between; gap: 28px; height: 96px; border-bottom: 1px solid var(--line); position: relative; z-index: 10; }
